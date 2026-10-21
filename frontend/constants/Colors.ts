@@ -1,54 +1,77 @@
-const oled = '#050505';
-const phosphor = '#F5F5F7';
+const paper = '#F1ECE0';
+const paperLift = '#F8F4EA';
+const ink = '#161A14';
 
 export const Palette = {
-  background: oled, // deepest OLED black
-  canvas: '#08090D', // lifted well for vignettes
-  surface: 'rgba(16,18,26,0.6)', // vantablack glass core
-  shell: 'rgba(255,255,255,0.04)', // machined tray / outer shell
-  border: 'rgba(255,255,255,0.08)', // hairline dividers
-  hairline: 'rgba(255,255,255,0.14)', // structural rim
-  accent: '#5AE2A1', // emerald primary
-  accentDeep: '#10B981',
-  accentAlt: '#8B5CF6', // violet (mesh glow partner)
-  accentSoft: 'rgba(90,226,161,0.12)',
-  accentAltSoft: 'rgba(139,92,246,0.14)',
-  accentContrast: oled, // ink on emerald fills
-  text: phosphor,
-  body: 'rgba(235,235,245,0.74)',
-  muted: 'rgba(235,235,245,0.5)',
-  dim: 'rgba(235,235,245,0.28)',
-  fine: 'rgba(235,235,245,0.14)',
-  glowEmerald: 'rgba(90,226,161,0.22)',
-  glowViolet: 'rgba(139,92,246,0.20)',
-  warn: '#F87171',
+  // Ground
+  background: paper,
+  canvas: '#E9E3D5',
+  surface: paperLift,
+  surfaceDeep: '#EBE5D7',
+  shell: 'rgba(22,26,20,0.05)',
+  shellDeep: 'rgba(22,26,20,0.08)',
+
+  // Structure
+  border: 'rgba(22,26,20,0.14)',
+  hairline: 'rgba(22,26,20,0.28)',
+  line: 'rgba(22,26,20,0.08)',
+
+  // Ink
+  text: ink,
+  body: 'rgba(22,26,20,0.72)',
+  muted: 'rgba(22,26,20,0.54)',
+  dim: 'rgba(22,26,20,0.34)',
+  fine: 'rgba(22,26,20,0.2)',
+
+  // Reverse (on ink)
+  ink,
+  inkSoft: '#232820',
+  inkLine: 'rgba(241,236,224,0.18)',
+  cream: paper,
+  creamLift: paperLift,
+  creamMuted: 'rgba(241,236,224,0.64)',
+  creamDim: 'rgba(241,236,224,0.4)',
+
+  // Field accents
+  accent: '#C4562D',
+  accentDeep: '#9C3F20',
+  accentSoft: 'rgba(196,86,45,0.10)',
+  accentContrast: paperLift,
+  moss: '#2E4633',
+  mossDeep: '#1C2E22',
+  mossSoft: 'rgba(46,70,51,0.10)',
+  sage: '#7C8F6B',
+  gold: '#A9823F',
+  goldSoft: 'rgba(169,130,63,0.14)',
+  warn: '#A23A2A',
+  white: '#FFFDF8',
 } as const;
 
 export default {
   light: {
-    text: '#121212',
-    background: '#F4F4F0',
-    tint: '#10B981',
-    tabIconDefault: '#A9A093',
-    tabIconSelected: '#10B981',
-    cardShell: '#EAE8E3',
-    cardCore: '#FFFFFF',
-    cardBorder: 'rgba(18,18,18,0.12)',
-    hairline: 'rgba(18,18,18,0.22)',
-    mutedText: 'rgba(18,18,18,0.55)',
-    bodyText: 'rgba(18,18,18,0.8)',
+    text: ink,
+    background: paper,
+    tint: '#2E4633',
+    tabIconDefault: 'rgba(22,26,20,0.4)',
+    tabIconSelected: ink,
+    cardShell: 'rgba(22,26,20,0.05)',
+    cardCore: paperLift,
+    cardBorder: 'rgba(22,26,20,0.14)',
+    hairline: 'rgba(22,26,20,0.28)',
+    mutedText: 'rgba(22,26,20,0.54)',
+    bodyText: 'rgba(22,26,20,0.72)',
   },
   dark: {
-    text: phosphor,
-    background: oled,
-    tint: '#5AE2A1',
-    tabIconDefault: 'rgba(235,235,245,0.28)',
-    tabIconSelected: '#5AE2A1',
-    cardShell: 'rgba(255,255,255,0.04)',
-    cardCore: 'rgba(16,18,26,0.6)',
-    cardBorder: 'rgba(255,255,255,0.08)',
-    hairline: 'rgba(255,255,255,0.14)',
-    mutedText: 'rgba(235,235,245,0.5)',
-    bodyText: 'rgba(235,235,245,0.74)',
+    text: ink,
+    background: paper,
+    tint: '#2E4633',
+    tabIconDefault: 'rgba(22,26,20,0.4)',
+    tabIconSelected: ink,
+    cardShell: 'rgba(22,26,20,0.05)',
+    cardCore: paperLift,
+    cardBorder: 'rgba(22,26,20,0.14)',
+    hairline: 'rgba(22,26,20,0.28)',
+    mutedText: 'rgba(22,26,20,0.54)',
+    bodyText: 'rgba(22,26,20,0.72)',
   },
 };

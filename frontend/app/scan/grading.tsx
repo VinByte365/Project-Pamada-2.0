@@ -1,11 +1,12 @@
-import { StubScreen } from '@/components/StubScreen';
+import { ScanScreen, scanModes } from '@/components/ScanScreen';
+
+const mode = scanModes[2];
 
 export default function ScanGradingScreen() {
   return (
-    <StubScreen
-      eyebrow="Scan · Grading"
-      title="Post-harvest grading"
-      description="Classify harvested aloe vera leaves by size, shape, and visible surface quality. Runs on-device."
+    <ScanScreen
+      mode={mode}
+      cameraSymbol={{ ios: 'camera.viewfinder', android: 'photo_camera', web: 'photo_camera' }}
     />
   );
 }

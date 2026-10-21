@@ -12,19 +12,23 @@ import Animated, {
 type Props = {
   children: ReactNode;
   delay?: number;
+  distance?: number;
   style?: StyleProp<ViewStyle>;
 };
 
 const ease = Easing.bezier(0.32, 0.72, 0, 1);
 
-export function Entry({ children, delay = 0, style }: Props) {
+export function Entry({ children, delay = 0, distance = 18, style }: Props) {
   const opacity = useSharedValue(0);
-  const translateY = useSharedValue(18);
+  const translateY = useSharedValue(distance);
 
   useEffect(() => {
-    opacity.value = withDelay(delay, withTiming(1, { duration: 600, easing: ease }));
-    translateY.value = withDelay(delay, withSpring(0, { damping: 20, stiffness: 160 }));
-  }, [delay, opacity.value, translateY.value]);
+    opacity.value = withDelay(delay, withTiming(1, { duration: 620, easing: ease }));
+    translateY.value = withDelay(
+      delay,
+      withSpring(0, { damping: 22, stiffness: 140, mass: 0.9 })
+    );
+  }, [delay, distance, opacity, translateY]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     opacity: opacity.value,

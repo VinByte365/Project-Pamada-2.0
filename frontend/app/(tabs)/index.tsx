@@ -1,10 +1,6 @@
-import { useMemo, useState } from 'react';
-import { Href, Link } from 'expo-router';
-import { LinearGradient } from 'expo-linear-gradient';
+import { Href } from 'expo-router';
 import {
-  ColorValue,
   LayoutChangeEvent,
-  Pressable,
   StyleSheet,
   Text,
   View,
@@ -18,92 +14,36 @@ import Animated, {
   useSharedValue,
 } from 'react-native-reanimated';
 import type { SharedValue } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { AloeMark, AloeRosette } from '@/components/AloeArt';
 import { Entry } from '@/components/Entry';
 import { Eyebrow } from '@/components/Eyebrow';
+import {
+  FieldButton,
+  LedgerRow,
+  Meta,
+  Rule,
+  ScreenFooter,
+  SectionHead,
+  Stamp,
+  Stat,
+} from '@/components/FieldUI';
+import { PaperBackground } from '@/components/PaperBackground';
 import { Palette } from '@/constants/Colors';
-import { Radius } from '@/constants/Metrics';
+import { Layout } from '@/constants/Metrics';
 import { Type } from '@/constants/Typography';
 
 const ease = Easing.bezier(0.32, 0.72, 0, 1).factory();
-
-const noise = require('../../assets/images/noise.png') as number;
-
-function useHover() {
-  const [hovered, setHovered] = useState(false);
-  return {
-    hovered,
-    handlers: {
-      onHoverIn: () => setHovered(true),
-      onHoverOut: () => setHovered(false),
-    },
-  };
-}
-
-function GlowOrb({
-  colors,
-  size,
-  top,
-  left,
-  right,
-  bottom,
-}: {
-  colors: readonly [ColorValue, ColorValue];
-  size: number;
-  top?: number;
-  left?: number;
-  right?: number;
-  bottom?: number;
-}) {
-  return (
-    <LinearGradient
-      pointerEvents="none"
-      colors={colors}
-      start={{ x: 0.3, y: 0.2 }}
-      end={{ x: 1, y: 1 }}
-      style={[
-        styles.glowOrb,
-        { width: size, height: size, borderRadius: size / 2, top, left, right, bottom },
-      ]}
-    />
-  );
-}
-
-function MeshField() {
-  const { width, height } = useWindowDimensions();
-  return (
-    <View pointerEvents="none" style={StyleSheet.absoluteFill}>
-      <LinearGradient
-        colors={['#06070B', Palette.background]}
-        style={StyleSheet.absoluteFill}
-      />
-      <GlowOrb
-        colors={['rgba(90,226,161,0.20)', 'rgba(5,5,5,0)'] as const}
-        size={Math.max(width, height) * 0.78}
-        left={-width * 0.28}
-        top={-120}
-      />
-      <GlowOrb
-        colors={['rgba(139,92,246,0.18)', 'rgba(5,5,5,0)'] as const}
-        size={Math.max(width, height) * 0.9}
-        right={-width * 0.35}
-        bottom={-height * 0.22}
-      />
-      <Animated.Image source={noise} resizeMode="cover" style={styles.grain} />
-    </View>
-  );
-}
 
 function Reveal({
   scrollY,
   children,
   style,
-  baseOffset,
 }: {
   scrollY: SharedValue<number>;
   children: React.ReactNode;
   style?: object;
-  baseOffset?: SharedValue<number>;
 }) {
   const { height } = useWindowDimensions();
   const windowH = useSharedValue(height);
@@ -112,17 +52,15 @@ function Reveal({
     offset.value = e.nativeEvent.layout.y;
   };
   const animatedStyle = useAnimatedStyle(() => {
-    const top = offset.value + (baseOffset?.value ?? 0);
-    const enter = (scrollY.value + windowH.value * 0.9 - top) / 220;
+    const top = offset.value;
+    const enter = (scrollY.value + windowH.value * 0.94 - top) / 260;
     const enterP = Math.min(Math.max(enter, 0), 1);
-    const leave = (scrollY.value - top) / 220;
-    const leaveP = Math.min(Math.max(leave, 0), 1);
     const p = ease(enterP);
     return {
-      opacity: p * (1 - leaveP * 0.85),
+      opacity: p,
       transform: [
-        { translateY: interpolate(p, [0, 1], [20, 0]) },
-        { scale: interpolate(p, [0, 1], [0.975, 1]) },
+        { translateY: interpolate(p, [0, 1], [26, 0]) },
+        { scale: interpolate(p, [0, 1], [0.985, 1]) },
       ],
     };
   });
@@ -133,406 +71,263 @@ function Reveal({
   );
 }
 
-function ScrubWord({
-  scrollY,
-  windowH,
-  offset,
-  word,
-  index,
-  base = 0.08,
-}: {
-  scrollY: SharedValue<number>;
-  windowH: SharedValue<number>;
-  offset: SharedValue<number>;
-  word: string;
-  index: number;
-  base?: number;
-}) {
-  const animatedStyle = useAnimatedStyle(() => {
-    const reveal = scrollY.value - offset.value + windowH.value * 0.85 - index * 30;
-    const p = reveal / 40;
-    return {
-      opacity: base + (1 - base) * Math.min(Math.max(p, 0), 1),
-    };
-  });
+function SpecimenPlate({ wide }: { wide: boolean }) {
   return (
-    <Animated.Text style={[styles.scrubWord, animatedStyle]}>
-      {word}{' '}
-    </Animated.Text>
-  );
-}
+    <View style={[styles.plate, wide ? styles.plateWide : styles.plateNarrow]}>
+      <View style={styles.plateAccentLine} />
+      <View style={styles.plateHead}>
+        <Meta tone="cream">Specimen / 004</Meta>
+        <Stamp label="Unscanned" tone="cream" />
+      </View>
 
-function Scrub({
-  scrollY,
-  text,
-  base = 0.08,
-}: {
-  scrollY: SharedValue<number>;
-  text: string;
-  base?: number;
-}) {
-  const { height } = useWindowDimensions();
-  const windowH = useSharedValue(height);
-  const offset = useSharedValue(0);
-  const onLayout = (e: LayoutChangeEvent) => {
-    offset.value = e.nativeEvent.layout.y;
-  };
-  const words = useMemo(() => text.split(' '), [text]);
-  return (
-    <Animated.View style={styles.scrubWrap} onLayout={onLayout}>
-      {words.map((word, i) => (
-        <ScrubWord
-          key={`${word}-${i}`}
-          scrollY={scrollY}
-          windowH={windowH}
-          offset={offset}
-          word={word}
-          index={i}
-          base={base}
-        />
-      ))}
-    </Animated.View>
-  );
-}
-
-function PillButton({
-  href,
-  label,
-  variant = 'primary',
-}: {
-  href: Href;
-  label: string;
-  variant?: 'primary' | 'ghost';
-}) {
-  const { hovered, handlers } = useHover();
-  return (
-    <Link href={href} asChild>
-      <Pressable
-        style={({ pressed }) => [
-          styles.pill,
-          variant === 'primary' ? styles.pillPrimary : styles.pillGhost,
-          hovered && styles.pillHover,
-          pressed && styles.pressed,
-        ]}
-        {...handlers}
-      >
-        <Text
-          style={[
-            styles.pillLabel,
-            variant === 'primary' ? styles.pillLabelPrimary : styles.pillLabelGhost,
-          ]}
-        >
-          {label}
-        </Text>
-        <View
-          style={[
-            styles.pillChip,
-            variant === 'primary' ? styles.pillChipPrimary : styles.pillChipGhost,
-          ]}
-        >
-          <Text
-            style={[
-              styles.pillChipGlyph,
-              variant === 'primary' ? styles.pillChipGlyphPrimary : styles.pillChipGlyphGhost,
-            ]}
-          >
-            ↗
-          </Text>
+      <View style={styles.plateArt}>
+        <AloeRosette height={wide ? 216 : 206} tone="ink" />
+        <View pointerEvents="none" style={styles.measure}>
+          {[
+            { label: '0', top: 0 },
+            { label: '20', top: 52 },
+            { label: '40', top: 104 },
+          ].map((tick) => (
+            <View key={tick.label} style={[styles.measureTick, { top: tick.top }]}>
+              <Text style={styles.measureLabel}>{tick.label}</Text>
+              <View style={styles.measureRule} />
+            </View>
+          ))}
         </View>
-      </Pressable>
-    </Link>
-  );
-}
+      </View>
 
-type Unit = {
-  id: string;
-  title: string;
-  value: string;
-  note: string;
-  href?: Href;
-  wide?: boolean;
-  accent?: boolean;
-};
-
-function GlassCard({
-  children,
-  width,
-  minHeight,
-  hovered,
-  accent,
-}: {
-  children: React.ReactNode;
-  width: number;
-  minHeight: number;
-  hovered: boolean;
-  accent?: boolean;
-}) {
-  return (
-    <View
-      style={[
-        styles.bezel,
-        { width, minHeight },
-        accent && styles.bezelAccent,
-        hovered && styles.bezelHover,
-      ]}
-    >
-      <View style={[styles.glassCore, accent && styles.glassCoreAccent]}>
-        {children}
+      <View style={styles.plateFoot}>
+        <View style={{ gap: 3 }}>
+          <Meta tone="cream">Aloe barbadensis</Meta>
+          <Text style={styles.plateName}>Miller</Text>
+        </View>
+        <View style={{ alignItems: 'flex-end', gap: 3 }}>
+          <Text style={styles.plateHeight}>42 cm</Text>
+          <Meta tone="cream">Stage 02 / 05</Meta>
+        </View>
       </View>
     </View>
   );
 }
 
-function ModuleCell({
-  unit,
-  scrollY,
-  baseOffset,
-  width,
-  columns,
-}: {
-  unit: Unit;
-  scrollY: SharedValue<number>;
-  baseOffset: SharedValue<number>;
-  width: number;
-  columns: number;
-}) {
-  const { hovered, handlers } = useHover();
-  const content = (
-    <GlassCard width={width} minHeight={unit.wide ? 168 : 188} hovered={hovered} accent={unit.accent}>
-      <View style={styles.unitHead}>
-        <Text style={styles.unitCode}>{unit.id}</Text>
-        <Text style={[styles.unitTitle, unit.accent && styles.unitTitleAccent]}>
-          {unit.title}
-        </Text>
-      </View>
-      <Text style={[styles.unitValue, unit.wide && styles.unitValueWide]}>{unit.value}</Text>
-      <View style={styles.unitFoot}>
-        <Text style={[styles.unitNote, unit.accent && styles.unitNoteAccent]}>{unit.note}</Text>
-        {unit.href ? <Text style={styles.unitArrow}>↗</Text> : null}
-      </View>
-    </GlassCard>
-  );
-  return (
-    <Reveal
-      scrollY={scrollY}
-      baseOffset={baseOffset}
-      style={{ width, minHeight: unit.wide ? 168 : 188 }}
-    >
-      {unit.href ? (
-        <Link href={unit.href} asChild>
-          <Pressable {...handlers}>{content}</Pressable>
-        </Link>
-      ) : (
-        <Pressable {...handlers}>{content}</Pressable>
-      )}
-    </Reveal>
-  );
-}
-
-const units: Unit[] = [
+const modules: {
+  id: string;
+  title: string;
+  note: string;
+  value: string;
+  href?: Href;
+}[] = [
   {
     id: '01',
     title: 'Plants',
+    note: 'Disease, maturity and grade history',
     value: '0',
-    note: 'diagnosis · maturity · grading',
     href: '/plants',
-    wide: true,
   },
-  {
-    id: '02',
-    title: 'Farms',
-    value: '0',
-    note: 'registered plots',
-    href: '/farms',
-  },
+  { id: '02', title: 'Farms', note: 'Plots, acreage and planting records', value: '0', href: '/farms' },
   {
     id: '03',
     title: 'Sensors',
-    value: '0',
-    note: 'soil · n · p · k · ph',
+    note: 'Moisture, N-P-K, EC and pH from the node',
+    value: '—',
     href: '/sensors',
   },
   {
     id: '04',
     title: 'Reports',
-    value: '0',
-    note: 'grades & profitability',
+    note: 'Yield, grade mix and return on investment',
+    value: '—',
     href: '/reports',
-    wide: true,
   },
-  {
-    id: '05',
-    title: 'Sync',
-    value: 'local',
-    note: 'offline-first by design',
-    accent: true,
-  },
+  { id: '05', title: 'Sync', note: 'A quiet queue for when signal returns', value: 'Local' },
 ];
 
 const steps = [
   {
     id: '01',
     title: 'Scan',
-    note: 'one frame is all it needs',
-    detail: 'Point the camera at a single leaf — the engine reads it on-device.',
+    detail: 'Hold one leaf inside the frame. The camera reads what the eye cannot.',
+    tag: 'ON-DEVICE',
   },
   {
     id: '02',
     title: 'Diagnose',
-    note: 'resolved locally',
-    detail: 'Disease, maturity and grade are computed right here. No upload.',
+    detail: 'Disease, maturity and grade resolve locally. Nothing is uploaded.',
+    tag: 'OFFLINE',
   },
   {
     id: '03',
     title: 'Act',
-    note: 'trusted next steps',
-    detail: 'Clear recommendations for soil, harvest and grading when you decide.',
+    detail: 'Harvest, treat or grade on evidence — not on a guess.',
+    tag: 'FIELD-READY',
   },
 ];
 
-function SectionHead({ index, title }: { index: string; title: string }) {
-  return (
-    <View style={styles.sectionHead}>
-      <View style={styles.sectionPill}>
-        <View style={styles.sectionDot} />
-        <Text style={styles.sectionMeta}>{index}</Text>
-      </View>
-      <Text style={styles.sectionTitle}>{title}</Text>
-    </View>
-  );
-}
-
 export default function HomeScreen() {
+  const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
-  const columns = width >= 760 ? 2 : 1;
-  const columnW = width - 40;
-  const halfW = (columnW - 14) / 2;
-  const cellWidth = (wide: boolean) => (columns === 1 ? columnW : wide ? columnW : halfW);
-
+  const wide = width >= 860;
   const scrollY = useSharedValue(0);
-  const unitsOffset = useSharedValue(0);
-  const ctaBlock = useHover();
+
   const onScroll = useAnimatedScrollHandler((e) => {
     scrollY.value = e.contentOffset.y;
   });
 
   return (
     <View style={styles.screen}>
-      <MeshField />
+      <PaperBackground />
       <Animated.ScrollView
         onScroll={onScroll}
         scrollEventThrottle={16}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[
+          styles.scroll,
+          { paddingTop: insets.top + 14, paddingBottom: Layout.tabBarInset + insets.bottom },
+        ]}
       >
-        <Entry delay={40}>
-          <View style={styles.hero}>
-            <Eyebrow label="FarmSystem · Group 03" />
-            <Text style={styles.heroTitle}>
-              Aloe intelligence,{' '}
-              <Text style={styles.heroAccent}>in your pocket.</Text>
-            </Text>
-            <Text style={styles.heroSub}>
-              Diagnose, grade and plan your crop — entirely on this device, even
-              when the network drops out.
-            </Text>
-          </View>
-        </Entry>
-
-        <Entry delay={170}>
-          <View style={styles.ctaRow}>
-            <PillButton href="/scan/diagnosis" label="Scan a leaf" />
-            <PillButton href="/farms" label="Explore farms" variant="ghost" />
-          </View>
-        </Entry>
-
-        <Entry delay={60}>
-          <SectionHead index="01 / modules" title="Your system at a glance" />
-        </Entry>
-
-        <View
-          style={styles.units}
-          onLayout={(e) => {
-            unitsOffset.value = e.nativeEvent.layout.y;
-          }}
-        >
-          {units.map((unit) => (
-            <ModuleCell
-              key={unit.id}
-              unit={unit}
-              scrollY={scrollY}
-              baseOffset={unitsOffset}
-              width={cellWidth(unit.wide ?? false)}
-              columns={columns}
-            />
-          ))}
-        </View>
-
-        <Entry delay={60}>
-          <SectionHead index="02 / procedure" title="Three steps, zero drift" />
-        </Entry>
-
-        <View style={styles.steps}>
-          {steps.map((step) => (
-            <Reveal key={step.id} scrollY={scrollY} style={styles.stepSlot}>
-              <View style={styles.stepCard}>
-                <View style={styles.stepHead}>
-                  <View style={styles.stepChip}>
-                    <Text style={styles.stepId}>{step.id}</Text>
-                  </View>
-                  <Text style={styles.stepNote}>{step.note}</Text>
-                </View>
-                <Text style={styles.stepTitle}>{step.title}</Text>
-                <Text style={styles.stepDetail}>{step.detail}</Text>
+        <View style={styles.frame}>
+          <View style={styles.masthead}>
+            <View style={styles.brand}>
+              <AloeMark size={27} color={Palette.moss} />
+              <View style={{ gap: 2 }}>
+                <Text style={styles.brandWord}>FARMSYSTEM</Text>
+                <Meta>Aloe ledger · Group 03</Meta>
               </View>
-            </Reveal>
-          ))}
-        </View>
+            </View>
+            <View style={styles.status}>
+              <View style={styles.statusDot} />
+              <Meta tone="ink">Local only</Meta>
+            </View>
+          </View>
 
-        <Entry delay={60}>
-          <SectionHead index="03 / doctrine" title="Why we build this" />
-        </Entry>
+          <Rule style={{ marginTop: 12 }} />
 
-        <Reveal scrollY={scrollY} style={styles.manifestoCard}>
-          <Scrub
-            scrollY={scrollY}
-            text="A connected toolkit that respects unconnected farms — everything that matters runs and lives on this device, ready for the moments when the network does not."
-          />
-        </Reveal>
+          <View style={[styles.hero, wide && styles.heroWide]}>
+            <Entry delay={30} style={styles.heroCopy}>
+              <Eyebrow label="Aloe barbadensis miller · 2026" />
+              <Text style={[styles.heroTitle, wide && styles.heroTitleWide]}>
+                Read the leaf.{'\n'}Keep the <Text style={styles.heroAccent}>record.</Text>
+              </Text>
+              <Text style={styles.heroBody}>
+                A field companion for aloe vera that works where the signal does not.
+                Diagnose disease, time the harvest, grade the cut — and know the margin.
+              </Text>
+              <View style={styles.ctaRow}>
+                <FieldButton label="Open the scanner" href="/scan/diagnosis" />
+                <FieldButton label="Browse records" href="/farms" variant="outline" />
+              </View>
+            </Entry>
 
-        <Entry delay={80}>
-          <Link href="/scan/diagnosis" asChild>
-            <Pressable
-              style={({ pressed }) => [pressed && styles.pressed]}
-              onHoverIn={ctaBlock.handlers.onHoverIn}
-              onHoverOut={ctaBlock.handlers.onHoverOut}
-            >
-              <LinearGradient
-                colors={['#5AE2A1', '#2F9E63']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={[styles.ctaBlock, ctaBlock.hovered && styles.ctaBlockHover]}
-              >
-                <View style={styles.ctaBlockHead}>
-                  <View style={styles.ctaBlockText}>
-                    <Text style={styles.ctaBlockTitle}>Start your first scan</Text>
-                    <Text style={styles.ctaBlockSub}>
-                      everything stays on this device
-                    </Text>
+            <Entry delay={170} style={[styles.plateWrap, wide && styles.plateWrapWide]}>
+              <SpecimenPlate wide={wide} />
+            </Entry>
+          </View>
+
+          <Entry delay={260}>
+            <View style={styles.stats}>
+              <View style={styles.statCell}>
+                <Stat label="Plants" value="0" note="awaiting records" />
+              </View>
+              <View style={styles.statDivider} />
+              <View style={styles.statCell}>
+                <Stat label="Farms" value="0" note="no plots yet" />
+              </View>
+              <View style={styles.statDivider} />
+              <View style={styles.statCell}>
+                <Stat label="Node" value="—" note="not paired" />
+              </View>
+            </View>
+          </Entry>
+
+          <Reveal scrollY={scrollY}>
+            <SectionHead
+              index="01 / Instruments"
+              title="Everything the field asks for."
+              aside="05 modules"
+              note="Each module writes to the same local ledger. The cloud is a copy, never the source."
+            />
+          </Reveal>
+
+          <View>
+            {modules.map((module, index) => (
+              <Reveal key={module.id} scrollY={scrollY}>
+                <LedgerRow
+                  index={module.id}
+                  title={module.title}
+                  note={module.note}
+                  value={module.value}
+                  href={module.href}
+                  last={index === modules.length - 1}
+                />
+              </Reveal>
+            ))}
+          </View>
+
+          <Reveal scrollY={scrollY}>
+            <SectionHead
+              index="02 / Protocol"
+              title="Three moves. No signal needed."
+              aside="Scan → Diagnose → Act"
+            />
+          </Reveal>
+
+          <View>
+            {steps.map((step, index) => (
+              <Reveal key={step.id} scrollY={scrollY}>
+                <View style={[styles.step, index === 0 && styles.stepFirst]}>
+                  <Text
+                    numberOfLines={1}
+                    style={[styles.stepNumber, index === 1 && styles.stepNumberAccent]}
+                  >
+                    {step.id}
+                  </Text>
+                  <View style={styles.stepCopy}>
+                    <Text style={styles.stepTitle}>{step.title}</Text>
+                    <Text style={styles.stepDetail}>{step.detail}</Text>
                   </View>
-                  <View style={styles.ctaBlockChip}>
-                    <Text style={styles.ctaBlockGlyph}>↗</Text>
-                  </View>
+                  <Stamp tone={index === 1 ? 'accent' : 'outline'} label={step.tag} />
                 </View>
-              </LinearGradient>
-            </Pressable>
-          </Link>
-        </Entry>
+              </Reveal>
+            ))}
+          </View>
 
-        <View style={styles.footer}>
-          <Text style={styles.footerText}>
-            © 2026 FarmSystem · Group 03 · Built for offline farms
-          </Text>
+          <Reveal scrollY={scrollY}>
+            <SectionHead
+              index="03 / Doctrine"
+              title="Built for the dead zones."
+              aside="Field principle"
+            />
+          </Reveal>
+
+          <Reveal scrollY={scrollY}>
+            <View style={styles.doctrine}>
+              <View style={styles.doctrineHead}>
+                <Meta tone="cream">Field doctrine / 01</Meta>
+                <Stamp label="Offline-first" tone="cream" />
+              </View>
+              <Text style={styles.doctrineQuote}>
+                A connected toolkit that respects{' '}
+                <Text style={styles.doctrineQuoteAccent}>unconnected farms.</Text>
+              </Text>
+              <Text style={styles.doctrineBody}>
+                Everything that matters is computed and kept on this device. Sync is a
+                courtesy, not a requirement.
+              </Text>
+              <View style={styles.doctrineFoot}>
+                <Text style={styles.doctrineNote}>No upload required · no account required</Text>
+                <FieldButton
+                  label="Start your first scan"
+                  href="/scan/diagnosis"
+                  variant="cream"
+                />
+              </View>
+              <View style={styles.doctrineCorner}>
+                <Text style={styles.doctrineCornerText}>03</Text>
+              </View>
+            </View>
+          </Reveal>
+
+          <ScreenFooter />
         </View>
       </Animated.ScrollView>
     </View>
@@ -544,327 +339,292 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Palette.background,
   },
-  glowOrb: {
-    position: 'absolute',
+  scroll: {
+    paddingHorizontal: Layout.gutter,
   },
-  grain: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    opacity: 0.05,
+  frame: {
+    width: '100%',
+    maxWidth: Layout.maxWidth,
+    alignSelf: 'center',
+    gap: 34,
   },
-  content: {
-    paddingTop: 88,
-    paddingHorizontal: 20,
-    paddingBottom: 130,
-    gap: 30,
+  masthead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  brand: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  brandWord: {
+    ...Type.meta,
+    color: Palette.text,
+    fontSize: 10.5,
+    letterSpacing: 1.7,
+  },
+  status: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+  },
+  statusDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: Palette.moss,
   },
   hero: {
+    gap: 26,
+    paddingTop: 8,
+  },
+  heroWide: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 44,
+  },
+  heroCopy: {
+    flex: 1,
     gap: 18,
+    paddingTop: 6,
   },
   heroTitle: {
     ...Type.display,
     fontSize: 50,
-    lineHeight: 52,
-    letterSpacing: -1.8,
+    lineHeight: 51,
+    letterSpacing: -2.1,
+  },
+  heroTitleWide: {
+    fontSize: 62,
+    lineHeight: 62,
+    letterSpacing: -2.7,
   },
   heroAccent: {
     color: Palette.accent,
   },
-  heroSub: {
+  heroBody: {
     ...Type.body,
-    fontSize: 16,
+    fontSize: 15.5,
     lineHeight: 24,
-    maxWidth: 330,
+    maxWidth: 430,
   },
   ctaRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 10,
+    paddingTop: 2,
   },
-  pill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    borderRadius: Radius.pill,
-    paddingVertical: 12,
-    paddingLeft: 20,
-    paddingRight: 8,
-  },
-  pillPrimary: {
-    backgroundColor: Palette.accent,
-  },
-  pillGhost: {
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    borderWidth: 1,
-    borderColor: Palette.border,
-  },
-  pillHover: {
-    transform: [{ translateY: -2 }],
-  },
-  pressed: {
-    opacity: 0.88,
-  },
-  pillLabel: {
-    ...Type.label,
-    fontSize: 15,
-  },
-  pillLabelPrimary: {
-    color: Palette.accentContrast,
-    fontFamily: 'Satoshi-Bold',
-  },
-  pillLabelGhost: {
-    color: Palette.text,
-  },
-  pillChip: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  pillChipPrimary: {
-    backgroundColor: Palette.accentContrast,
-  },
-  pillChipGhost: {
-    backgroundColor: 'rgba(255,255,255,0.08)',
-  },
-  pillChipGlyph: {
-    fontSize: 14,
-  },
-  pillChipGlyphPrimary: {
-    color: Palette.accent,
-  },
-  pillChipGlyphGhost: {
-    color: Palette.text,
-  },
-  sectionHead: {
-    gap: 10,
-  },
-  sectionPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    alignSelf: 'flex-start',
-    borderRadius: Radius.pill,
-    paddingVertical: 7,
-    paddingHorizontal: 13,
-    backgroundColor: 'rgba(255,255,255,0.05)',
-    borderWidth: 1,
-    borderColor: Palette.border,
-  },
-  sectionDot: {
-    width: 5,
-    height: 5,
-    borderRadius: 2.5,
-    backgroundColor: Palette.accent,
-  },
-  sectionMeta: {
-    ...Type.caption,
-    color: Palette.muted,
-  },
-  sectionTitle: {
-    ...Type.title,
-    fontSize: 27,
-    lineHeight: 32,
-  },
-  units: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 14,
-  },
-  bezel: {
-    borderRadius: Radius.glass,
-    padding: 7,
-    backgroundColor: 'rgba(255,255,255,0.04)',
-    borderWidth: 1,
-    borderColor: Palette.border,
-    boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.06)',
-  },
-  bezelHover: {
-    transform: [{ translateY: -3 }],
-  },
-  bezelAccent: {
-    borderColor: 'rgba(139,92,246,0.35)',
-    backgroundColor: 'rgba(139,92,246,0.06)',
-  },
-  glassCore: {
-    flex: 1,
-    borderRadius: Radius.glassInner,
-    backgroundColor: 'rgba(13,15,22,0.68)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.05)',
-    padding: 18,
-    gap: 14,
-    justifyContent: 'space-between',
-  },
-  glassCoreAccent: {
-    backgroundColor: 'rgba(20,16,40,0.72)',
-  },
-  unitHead: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  unitCode: {
-    fontFamily: 'Satoshi-Medium',
-    fontSize: 10,
-    letterSpacing: 1.6,
-    color: Palette.fine,
-  },
-  unitTitle: {
-    ...Type.label,
-    fontSize: 14,
-    color: Palette.muted,
-  },
-  unitTitleAccent: {
-    color: Palette.accent,
-  },
-  unitValue: {
-    fontFamily: 'CabinetGrotesk-Bold',
-    fontSize: 34,
-    lineHeight: 40,
-    letterSpacing: -1,
-    color: Palette.text,
-  },
-  unitValueWide: {
-    fontSize: 40,
-    lineHeight: 46,
-  },
-  unitFoot: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  unitNote: {
-    ...Type.caption,
-    color: Palette.dim,
-  },
-  unitNoteAccent: {
-    color: Palette.accentAlt,
-  },
-  unitArrow: {
-    color: Palette.dim,
-    fontSize: 13,
-  },
-  steps: {
-    gap: 12,
-  },
-  stepSlot: {
+  plateWrap: {
     width: '100%',
   },
-  stepCard: {
-    borderRadius: Radius.lg,
-    backgroundColor: 'rgba(255,255,255,0.04)',
-    borderWidth: 1,
-    borderColor: Palette.border,
-    padding: 22,
-    gap: 10,
+  plateWrapWide: {
+    width: 340,
   },
-  stepHead: {
+  plate: {
+    backgroundColor: Palette.ink,
+    borderRadius: 28,
+    borderWidth: 1,
+    borderColor: 'rgba(22,26,20,0.4)',
+    padding: 18,
+    gap: 14,
+    overflow: 'hidden',
+    boxShadow: '0 28px 56px -34px rgba(22,26,20,0.7)',
+  },
+  plateWide: {
+    minHeight: 404,
+  },
+  plateNarrow: {
+    minHeight: 388,
+  },
+  plateAccentLine: {
+    position: 'absolute',
+    left: 9,
+    top: 26,
+    bottom: 26,
+    width: 2,
+    backgroundColor: Palette.accent,
+    opacity: 0.85,
+  },
+  plateHead: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    gap: 12,
+    paddingLeft: 6,
   },
-  stepChip: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+  plateArt: {
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: Palette.accentSoft,
-    borderWidth: 1,
-    borderColor: 'rgba(90,226,161,0.3)',
+    minHeight: 216,
   },
-  stepId: {
-    fontFamily: 'Satoshi-Bold',
+  measure: {
+    position: 'absolute',
+    left: 8,
+    top: 16,
+    bottom: 16,
+    width: 40,
+    justifyContent: 'flex-start',
+    gap: 16,
+  },
+  measureTick: {
+    position: 'absolute',
+    left: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  measureLabel: {
+    fontFamily: 'SpaceMono-Regular',
+    fontSize: 8,
+    color: Palette.creamDim,
+    width: 14,
+  },
+  measureRule: {
+    width: 12,
+    height: 1,
+    backgroundColor: 'rgba(241,236,224,0.24)',
+  },
+  plateFoot: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
+    gap: 12,
+    paddingLeft: 6,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: Palette.inkLine,
+  },
+  plateName: {
+    fontFamily: 'CabinetGrotesk-Bold',
+    fontSize: 24,
+    lineHeight: 27,
+    letterSpacing: -0.8,
+    color: Palette.cream,
+  },
+  plateHeight: {
+    fontFamily: 'SpaceMono-Regular',
     fontSize: 12,
+    color: Palette.cream,
+  },
+  stats: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: Palette.border,
+    paddingVertical: 18,
+  },
+  statCell: {
+    flex: 1,
+    paddingRight: 8,
+  },
+  statDivider: {
+    width: 1,
+    backgroundColor: Palette.border,
+    marginRight: 12,
+    marginLeft: 4,
+  },
+  step: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 16,
+    borderTopWidth: 1,
+    borderTopColor: Palette.line,
+    paddingVertical: 22,
+  },
+  stepFirst: {
+    borderTopWidth: 0,
+    paddingTop: 4,
+  },
+  stepNumber: {
+    fontFamily: 'CabinetGrotesk-Black',
+    fontSize: 54,
+    lineHeight: 54,
+    letterSpacing: -3,
+    color: Palette.dim,
+    width: 74,
+    flexShrink: 0,
+  },
+  stepNumberAccent: {
     color: Palette.accent,
   },
-  stepNote: {
-    ...Type.caption,
-    color: Palette.dim,
+  stepCopy: {
+    flex: 1,
+    gap: 6,
+    paddingTop: 4,
   },
   stepTitle: {
-    ...Type.displaySmall,
-    fontSize: 28,
-    lineHeight: 32,
+    ...Type.title,
+    fontSize: 24,
+    lineHeight: 28,
   },
   stepDetail: {
     ...Type.body,
-    fontSize: 14,
-    lineHeight: 21,
-    color: Palette.body,
+    fontSize: 13.5,
+    lineHeight: 20,
+    maxWidth: 380,
   },
-  manifestoCard: {
-    borderRadius: Radius.glass,
+  doctrine: {
+    backgroundColor: Palette.ink,
+    borderRadius: 28,
     padding: 24,
-    backgroundColor: 'rgba(255,255,255,0.04)',
-    borderWidth: 1,
-    borderColor: Palette.border,
-  },
-  scrubWrap: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-  },
-  scrubWord: {
-    fontFamily: 'CabinetGrotesk-Bold',
-    fontSize: 28,
-    lineHeight: 34,
-    letterSpacing: -0.8,
-    color: Palette.text,
-  },
-  ctaBlock: {
-    borderRadius: Radius.glass,
-    padding: 24,
+    gap: 20,
     overflow: 'hidden',
+    boxShadow: '0 30px 60px -38px rgba(22,26,20,0.7)',
   },
-  ctaBlockHover: {
-    transform: [{ translateY: -3 }],
-  },
-  ctaBlockHead: {
+  doctrineHead: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 16,
+    gap: 12,
   },
-  ctaBlockText: {
-    gap: 6,
+  doctrineQuote: {
+    ...Type.quote,
+    fontSize: 31,
+    lineHeight: 38,
+    letterSpacing: -1.1,
+    maxWidth: 640,
   },
-  ctaBlockTitle: {
+  doctrineQuoteAccent: {
+    color: Palette.accent,
+  },
+  doctrineBody: {
+    ...Type.body,
+    color: Palette.creamMuted,
+    fontSize: 13.5,
+    lineHeight: 21,
+    maxWidth: 460,
+  },
+  doctrineFoot: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 18,
+    flexWrap: 'wrap',
+    borderTopWidth: 1,
+    borderTopColor: Palette.inkLine,
+    paddingTop: 18,
+  },
+  doctrineNote: {
+    ...Type.caption,
+    color: Palette.creamDim,
+    flexShrink: 1,
+  },
+  doctrineButton: {
+    flexShrink: 0,
+  },
+  doctrineCorner: {
+    position: 'absolute',
+    right: -18,
+    bottom: -56,
+  },
+  doctrineCornerText: {
     fontFamily: 'CabinetGrotesk-Black',
-    fontSize: 26,
-    lineHeight: 30,
-    letterSpacing: -1,
-    color: Palette.accentContrast,
-  },
-  ctaBlockSub: {
-    ...Type.caption,
-    color: 'rgba(5,5,5,0.6)',
-  },
-  ctaBlockChip: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(5,5,5,0.14)',
-  },
-  ctaBlockGlyph: {
-    fontSize: 18,
-    color: Palette.accentContrast,
-  },
-  footer: {
-    alignItems: 'center',
-    paddingTop: 6,
-    paddingBottom: 8,
-  },
-  footerText: {
-    ...Type.caption,
-    fontSize: 9,
-    letterSpacing: 1.3,
-    color: Palette.dim,
+    fontSize: 220,
+    lineHeight: 240,
+    color: 'rgba(241,236,224,0.04)',
   },
 });

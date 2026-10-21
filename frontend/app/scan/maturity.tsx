@@ -1,11 +1,12 @@
-import { StubScreen } from '@/components/StubScreen';
+import { ScanScreen, scanModes } from '@/components/ScanScreen';
+
+const mode = scanModes[1];
 
 export default function ScanMaturityScreen() {
   return (
-    <StubScreen
-      eyebrow="Scan · Maturity"
-      title="Harvest readiness"
-      description="Estimate plant age and harvest timing from visual features such as leaf count and structure. Runs on-device."
+    <ScanScreen
+      mode={mode}
+      cameraSymbol={{ ios: 'camera.viewfinder', android: 'photo_camera', web: 'photo_camera' }}
     />
   );
 }

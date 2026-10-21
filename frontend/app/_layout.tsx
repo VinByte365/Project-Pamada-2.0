@@ -1,6 +1,7 @@
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
+import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import 'react-native-reanimated';
@@ -55,6 +56,7 @@ export default function RootLayout() {
 
   return (
     <QueryClientProvider client={queryClient}>
+      <StatusBar style="dark" />
       <Stack
         screenOptions={{
           headerShown: false,
