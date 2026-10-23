@@ -118,13 +118,12 @@ export default function ModalScreen() {
               />
             ) : (
               <FieldButton
-                label="Profile created"
-                onPress={createProfile}
-                variant="outline"
-                disabled
+                label="Done"
+                onPress={() => router.back()}
+                variant="ink"
+                style={{ flexGrow: 1 }}
               />
             )}
-            <FieldButton label="Close" onPress={() => router.back()} variant="outline" />
           </View>
 
           <View style={styles.section}>

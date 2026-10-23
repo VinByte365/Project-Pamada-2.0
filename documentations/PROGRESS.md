@@ -1,74 +1,70 @@
 # System Progress
 
 **Project:** FarmSystem — "BUONG PAPEL": Integrated IoT and Machine Learning-Based System for Enhanced Aloe Vera Farming
-**Current Phase:** Phase 5 — Backend (complete), Phase 1 — Mobile Foundation (in progress)
-**Last Updated:** October 8, 2026
+**Current State:** Backend Phase 5 complete; mobile Phase 1 interactive foundation in progress
+**Last Updated:** October 23, 2026
 
 ---
 
-## Planning & Documentation
+## Product Scope
 
-- Extracted requirements from the BUONG PAPEL academic paper, including scope, delimitations, methodology, and a mapping to engineering docs.
-- Authored the full engineering documentation suite: master system plan, 9-phase roadmap, project/frontend/backend structure specs, hardware/IoT spec, and sync specification.
-- Defined scope & delimitations: Aloe Barbadensis only, externally visible disease only, no automated actuation.
-- Recorded key architectural decision: **offline-first** (deviates from the paper's internet-required design).
+- Covers Aloe barbadensis Miller cultivation records in a single field companion.
+- Supports three field decisions: visible-leaf disease diagnosis, harvest maturity, and post-harvest grading.
+- Operates offline by design; core record keeping does not require an account or connection.
+- Exposes market and margin context without automating any physical farm action.
+- Keeps cloud participation optional.
 
-## Repository & Conventions
+## Mobile Foundation (Phase 1 — In Progress)
 
-- Single git repository established with a clean, versioned history.
-- Set coding conventions: TypeScript strict mode, PEP 8 for Python, component/naming rules.
-- Set secrets and configuration policy (env-based config, no committed secrets).
-
-## Mobile Foundation (Phase 1)
-
-- Built with Expo SDK 57 + React Native + TypeScript.
-- Full navigation with 5 tabs: Home, Farms, Plants, Sensors, Settings.
-- Feature screens: leaf diagnosis scan, maturity scan, post-harvest grading scan, reports, and community.
-- Custom glassmorphic floating tab bar with SF Symbol icons.
-- Root setup: custom font loading, splash screen control, React Query data fetching, smooth fade transitions.
-- Complete design system:
-  - Dark-first color palette (OLED black with emerald/violet accents) plus light/dark themes
-  - Typography scale using CabinetGrotesk, Satoshi, and SpaceMono
-  - Consistent spacing and radius tokens
-- Reusable UI components: entrance animations, section eyebrows, screen shells, stub screens, themed text, theme hooks.
-- Animated Home dashboard: hero with CTAs, module stat cards (plants, farms, sensors, reports, sync), 3-step procedure (Scan → Diagnose → Act), scroll-reveal/scrub animations, glassmorphic cards, footer.
-- State management: local profile and account status (`local_only` / `synced`) via zustand.
-- API client configured with an environment-based base URL.
-- Offline-identity modal — first working interactive feature (creates a local profile ID).
-- Placeholder screens covering all planned features: farms, plants, sensors, settings, diagnosis, maturity, grading, reports, community.
-- Prepared scaffolding for the local database, ML inference, and sync layers.
+- Provides five primary destinations: Home, Farms, Plants, Sensors, Settings.
+- Uses a floating glass navigation dock with blur, translucency, a hairline border, an active capsule, responsive sizing, and a tinted fallback when blur is unavailable.
+- Applies a Field Ledger visual identity: warm paper surfaces, ink typography, moss and persimmon accents, editorial rules, oversized headings, double-bezel cards, and asymmetric layouts.
+- Uses a three-family type hierarchy with responsive display sizes.
+- Home presents a direct scanner entry point, local-only status, a specimen plate, current field counts, and a Scan → Diagnose → Act field narrative.
+- Farms presents an in-session registration draft and a current-session farm list without cloud persistence.
+- Plants presents status counts, status filters, specimen states, and designed empty states.
+- Provides a shared camera-first interface for diagnosis, maturity, and grading modes, including mode switching, framing guidance, an animated scan line, and capture feedback.
+- Labels scan capture as preview-only; no image is stored or analyzed yet.
+- Reports presents a designed empty state and an explicitly labeled sample report.
+- Sensors presents node-pairing status, an inactive instrument panel, and clearly labeled preview readings.
+- Community presents a draft field-note composer, disabled scan attachment, disabled publishing, and an optional-participation notice.
+- Settings presents local identity creation, sync behavior toggles, scan retention, haptic preference, and accessible switch states.
+- Creates a local identity without email, password, or connection; the identity is scoped to the current app session.
+- Covers stack destinations for scan modes, reports, community, identity, and unknown routes.
+- Provides accessible control roles and labels, visible keyboard focus states, and responsive layouts down to 320 px.
+- Uses purposeful opacity and transform motion with consistent easing for entrances and everyday interactions.
+- Includes designed empty, preview, and sample states that never present sample values as live data.
 
 ## Backend (Phase 5 — Complete)
 
-- Built with FastAPI, uvicorn, Pydantic v2, and async MongoDB (motor).
-- Environment-driven configuration via `.env`; secrets never committed.
-- Async MongoDB connection and shared dependencies (auth, DB session).
-- Layered architecture separating routers, services, document models, and API schemas.
-- MongoDB document models for: users, farms, plants, diagnoses, maturity, gradings, sensor readings, profit reports, community posts, and comments.
-- Authentication: backend-issued JWT supporting local-only and registered (synced) user states, with password hashing and current-user dependency injection.
-- Full REST API covering auth, users, farms, plants, diagnoses, gradings, sensors, reports, community, and sync.
-- Business logic (auth, sync) separated from HTTP concerns.
-- Structured JSON errors, consistent status codes, and CORS for the mobile and future web clients.
-- Automated test suite (pytest).
+- Supports JWT authentication for local-only and registered account states, including password hashing.
+- Provides create, read, update, and delete capabilities for users, farms, plants, diagnoses, maturity assessments, gradings, sensor readings, profit reports, community posts, and comments.
+- Persists synchronized records in the cloud.
+- Provides synchronization endpoints between locally created records and the cloud.
+- Returns structured JSON errors with consistent status codes.
+- Allows cross-origin access for the mobile client and a future web client.
+- Includes automated test coverage for backend behavior.
 
-## Database
+## Data State
 
-- Local SQLite schema specified (11 tables): local profile, farms, plants, diagnoses, maturity assessments, gradings, sensor readings, profit reports, community drafts, sync queue, cached posts — **not yet implemented** (Phase 2).
-- MongoDB (10 collections) implemented in the backend as the source of truth for synchronized data.
+- Cloud persistence is available for synchronized records.
+- Mobile identity, farm drafts, community drafts, report previews, scan previews, and preference changes are session-scoped.
+- Durable local storage, offline queues, conflict handling, and cached community content are not yet active.
 
-## Not Yet Started
+## Capabilities Pending
 
-- Phase 2 — SQLite local persistence
-- Phase 3 — ML training, ONNX conversion, on-device inference
-- Phase 4 — Raspberry Pi + 6-in-1 sensor integration (data-flow Option A vs. B undecided)
-- Phase 6 — Sync queue and conflict resolution
-- Phase 7 — Profitability/ROI reporting logic
-- Phase 8 — Community module
-- Phase 9 — Web client
-- CI/CD and deployment configuration
-
----
+- Durable offline storage for mobile records.
+- On-device inference for diagnosis, maturity, and grading.
+- Camera image capture and retention.
+- Raspberry Pi sensor pairing and live readings.
+- Mobile sync queue execution and conflict resolution.
+- Profitability and return calculations.
+- Community publishing, comments, and scan attachments.
+- Web client.
+- Automated deployment pipeline.
 
 ## Summary
 
-Planning and documentation are mature and complete, and the backend is done (auth, CRUD endpoints, sync endpoints, tests). Mobile work currently consists of a polished, animated UI shell with one working interaction (local profile creation). Remaining: SQLite persistence, ML on-device inference, IoT hardware integration, sync, reporting, community, and the web client.
+- Backend Phase 5 is complete across authentication, record APIs, synchronization, and automated tests.
+- The mobile client currently delivers a polished, responsive field interface with session-local interactions and explicit preview states.
+- Remaining work is durable offline data, on-device intelligence, sensor integration, mobile synchronization, real reporting, community publishing, and the web client.

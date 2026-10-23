@@ -87,12 +87,6 @@ export default function SettingsScreen() {
 
         <View style={styles.identityFoot}>
           <Text style={styles.identityNote}>No account required for any core feature</Text>
-          <FieldButton
-            label={localProfileId ? 'Manage identity' : 'Create a profile'}
-            href="/modal"
-            variant="cream"
-            compact
-          />
         </View>
       </Card>
 
@@ -273,7 +267,7 @@ const styles = StyleSheet.create({
   },
   identityNote: {
     ...Type.caption,
-    color: Palette.creamDim,
+    color: Palette.creamMuted,
     flexShrink: 1,
   },
   section: {

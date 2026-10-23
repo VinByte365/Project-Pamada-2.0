@@ -68,7 +68,7 @@ export default function PlantsScreen() {
         </View>
         <View style={styles.statDivider} />
         <View style={styles.statCell}>
-          <Stat label="Needs care" value="0" note="flagged" />
+          <Stat label="Flagged" value="0" note="needs care" />
         </View>
         <View style={styles.statDivider} />
         <View style={styles.statCell}>

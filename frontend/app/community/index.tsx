@@ -232,6 +232,7 @@ const styles = StyleSheet.create({
     color: Palette.text,
     backgroundColor: 'rgba(22,26,20,0.015)',
     outlineWidth: 0,
+    outlineStyle: 'none' as unknown as 'solid',
   },
   composerInputFocused: {
     borderColor: Palette.accent,
@@ -243,6 +244,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: 12,
     flexWrap: 'wrap',
+    marginTop: 12,
   },
   attach: {
     flexDirection: 'row',

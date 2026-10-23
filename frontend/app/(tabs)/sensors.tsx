@@ -40,12 +40,16 @@ const channels: Channel[] = [
   { code: 'K', label: 'Potassium', unit: 'mg/kg', value: 27, display: '27', max: 100 },
 ];
 
-function PulseDot() {
+function PulseDot({ active }: { active: boolean }) {
   const pulse = useSharedValue(0);
 
   useEffect(() => {
+    if (!active) {
+      pulse.value = 0;
+      return;
+    }
     pulse.value = withRepeat(withTiming(1, { duration: 2600, easing: ease }), -1, false);
-  }, [pulse]);
+  }, [active, pulse]);
 
   const ring = useAnimatedStyle(() => ({
     opacity: 0.5 * (1 - pulse.value),
@@ -54,8 +58,8 @@ function PulseDot() {
 
   return (
     <View style={styles.pulse}>
-      <Animated.View style={[styles.pulseRing, ring]} />
-      <View style={styles.pulseCore} />
+      {active ? <Animated.View style={[styles.pulseRing, ring]} /> : null}
+      <View style={[styles.pulseCore, !active && styles.pulseCoreIdle]} />
     </View>
   );
 }
@@ -154,7 +158,7 @@ export default function SensorsScreen() {
         <View style={styles.node}>
           <View style={styles.nodeStatusRow}>
             <View style={styles.nodeStatus}>
-              <PulseDot />
+              <PulseDot active={preview} />
               <Meta tone="cream">Raspberry Pi node</Meta>
             </View>
             <Stamp label={preview ? 'Preview' : 'Not paired'} tone="cream" />
@@ -345,6 +349,9 @@ const styles = StyleSheet.create({
     height: 6,
     borderRadius: 3,
     backgroundColor: Palette.accent,
+  },
+  pulseCoreIdle: {
+    backgroundColor: Palette.creamDim,
   },
   dialHead: {
     flexDirection: 'row',

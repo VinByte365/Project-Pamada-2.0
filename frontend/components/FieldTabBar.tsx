@@ -157,7 +157,7 @@ const styles = StyleSheet.create({
     maxWidth: 500,
     borderRadius: 26,
     overflow: 'hidden',
-    backgroundColor: 'rgba(248,244,234,0.9)',
+    backgroundColor: 'rgba(248,244,234,0.64)',
     borderWidth: 1,
     borderColor: 'rgba(22,26,20,0.16)',
     boxShadow:
@@ -170,7 +170,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(248,244,234,0.58)',
+    backgroundColor: 'rgba(248,244,234,0.32)',
   },
   items: {
     flexDirection: 'row',

@@ -164,16 +164,6 @@ export default function FarmsScreen() {
         </View>
       </View>
 
-      {showForm ? (
-        <FarmForm
-          onCancel={() => setShowForm(false)}
-          onSave={(farm) => {
-            setFarms((current) => [...current, farm]);
-            setShowForm(false);
-          }}
-        />
-      ) : null}
-
       <View style={styles.filters}>
         {filters.map((item) => {
           const active = filter === item;
@@ -425,6 +415,7 @@ const styles = StyleSheet.create({
     borderBottomColor: Palette.hairline,
     color: Palette.text,
     outlineWidth: 0,
+    outlineStyle: 'none' as unknown as 'solid',
   },
   inputFocused: {
     borderBottomColor: Palette.accent,

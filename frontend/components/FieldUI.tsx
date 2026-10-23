@@ -319,6 +319,7 @@ export function Toggle({
       accessibilityRole="switch"
       accessibilityLabel={label}
       accessibilityState={{ checked: value }}
+      aria-checked={value}
       hitSlop={8}
       onPress={() => onChange(!value)}
     >

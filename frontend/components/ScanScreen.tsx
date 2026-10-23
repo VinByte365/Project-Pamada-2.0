@@ -223,10 +223,12 @@ export function ScanScreen({
           </Pressable>
           <View style={styles.captureCopy}>
             <Text style={styles.captureTitle}>Capture leaf</Text>
-            <Text style={styles.captureNote}>
-              {mode.key === 'grading'
-                ? 'Lay the harvested leaf flat, cut edge at the bottom.'
-                : 'Hold steady. One frame is all the model needs.'}
+            <Text style={[styles.captureNote, notice && styles.captureNoteNotice]}>
+              {notice
+                ? 'Preview only. No frame is stored; the camera pipeline arrives in Phase 3.'
+                : mode.key === 'grading'
+                  ? 'Lay the harvested leaf flat, cut edge at the bottom.'
+                  : 'Hold steady. One frame is all the model needs.'}
             </Text>
           </View>
           <Stamp label="Preview" />
@@ -331,7 +333,7 @@ const styles = StyleSheet.create({
   },
   frame: {
     position: 'relative',
-    height: 392,
+    height: 352,
     borderRadius: 26,
     backgroundColor: '#101410',
     borderWidth: 1,
@@ -488,6 +490,9 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 17,
     color: Palette.muted,
+  },
+  captureNoteNotice: {
+    color: Palette.accentDeep,
   },
   notice: {
     borderWidth: 1,
