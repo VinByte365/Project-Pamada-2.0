@@ -29,6 +29,12 @@ export default function AdminDashboardPage() {
   // Action states
   const [actionUserId, setActionUserId] = useState<string | null>(null);
   const [actionScanId, setActionScanId] = useState<string | null>(null);
+  const [editingDisease, setEditingDisease] = useState<{
+    key: string;
+    name: string;
+    description: string;
+    treatment: string;
+  } | null>(null);
   const [busy, setBusy] = useState(false);
 
   const loadAdminData = async () => {
@@ -109,6 +115,35 @@ export default function AdminDashboardPage() {
       setActionScanId(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not delete scan.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleSaveDisease = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingDisease) return;
+    try {
+      setBusy(true);
+      await api.admin.updateDisease(editingDisease.key, {
+        description: editingDisease.description,
+        treatments: [editingDisease.treatment],
+      });
+      setNotification(`Protocols for ${editingDisease.name} synchronized to growers.`);
+      setDiseases((prev) => ({
+        ...prev,
+        [editingDisease.key]: {
+          ...prev[editingDisease.key],
+          description: editingDisease.description,
+          treatments: [
+            editingDisease.treatment,
+            ...(prev[editingDisease.key]?.treatments?.slice(1) || []),
+          ],
+        },
+      }));
+      setEditingDisease(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to update disease protocol.");
     } finally {
       setBusy(false);
     }
@@ -467,6 +502,23 @@ export default function AdminDashboardPage() {
                 <div style={{ fontSize: "11px", color: "var(--muted)", marginTop: "4px" }}>
                   <strong>Direct Treatment: </strong> {info.treatments?.[0]}
                 </div>
+                <div style={{ marginTop: "14px", display: "flex", justifyContent: "flex-end" }}>
+                  <button
+                    type="button"
+                    className="secondary-button"
+                    style={{ fontSize: "11px", padding: "4px 10px" }}
+                    onClick={() =>
+                      setEditingDisease({
+                        key,
+                        name: info.name,
+                        description: info.description || "",
+                        treatment: info.treatments?.[0] || "",
+                      })
+                    }
+                  >
+                    ✏ Edit Guidance Protocol
+                  </button>
+                </div>
               </div>
             ))}
           </div>
@@ -554,6 +606,54 @@ export default function AdminDashboardPage() {
                   {busy ? "Deleting..." : "Confirm Delete"}
                 </button>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Edit Disease / Recommendation Protocol Modal */}
+        {editingDisease && (
+          <div className="modal-backdrop" role="dialog" aria-modal="true">
+            <div className="modal-card" style={{ maxWidth: "560px", width: "100%" }}>
+              <div className="modal-header">
+                <h2>Edit Care Protocol: {editingDisease.name}</h2>
+                <button className="btn-icon" onClick={() => setEditingDisease(null)} type="button">✕</button>
+              </div>
+              <form onSubmit={handleSaveDisease} style={{ marginTop: "14px", display: "flex", flexDirection: "column", gap: "12px" }}>
+                <div>
+                  <label style={{ fontSize: "12px", fontWeight: 600, display: "block", marginBottom: "4px" }}>
+                    Clinical Pathology Description
+                  </label>
+                  <textarea
+                    rows={3}
+                    className="input-field"
+                    style={{ width: "100%", padding: "8px", fontSize: "12px", borderRadius: "6px", border: "1px solid #ccc" }}
+                    value={editingDisease.description}
+                    onChange={(e) => setEditingDisease({ ...editingDisease, description: e.target.value })}
+                    required
+                  />
+                </div>
+                <div>
+                  <label style={{ fontSize: "12px", fontWeight: 600, display: "block", marginBottom: "4px" }}>
+                    Primary Treatment Recommendation (Synchronized to User Care Guides)
+                  </label>
+                  <textarea
+                    rows={3}
+                    className="input-field"
+                    style={{ width: "100%", padding: "8px", fontSize: "12px", borderRadius: "6px", border: "1px solid #ccc" }}
+                    value={editingDisease.treatment}
+                    onChange={(e) => setEditingDisease({ ...editingDisease, treatment: e.target.value })}
+                    required
+                  />
+                </div>
+                <div className="modal-actions" style={{ marginTop: "10px" }}>
+                  <button className="secondary-button" onClick={() => setEditingDisease(null)} type="button" disabled={busy}>
+                    Cancel
+                  </button>
+                  <button className="primary-button" type="submit" disabled={busy}>
+                    {busy ? "Saving & Syncing..." : "Save & Sync to Growers"}
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
         )}

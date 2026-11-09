@@ -1,25 +1,29 @@
 """
 Aloe Vera Plant Health & Vision Analysis Core
-Provides genuine computer vision inspection, color spectrum analysis,
-Aloe Vera species verification, disease pathology classification, and harvest maturity estimation.
+Provides deep computer vision inspection, YOLOv8 machine learning inference,
+foliar chromatic spectrum analysis, Aloe Vera species verification,
+9-class disease pathology classification, and leaf maturity detection.
 """
 
 import base64
 import io
+import logging
 import math
+import tempfile
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 
 from PIL import Image, ImageFile, ImageStat
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
-
+logger = logging.getLogger("aloe_guard.vision")
 
 # Botanical reference profiles for Aloe Vera (Aloe barbadensis Miller)
 ALOE_SPECIES_NAME = "Aloe barbadensis Miller"
 
 # Supported disease and pest categories
-SUPPORTED_DISEASES = {
+SUPPORTED_DISEASES: dict[str, dict[str, Any]] = {
     "Healthy": {
         "name": "Healthy Aloe Vera",
         "severity": "None",
@@ -112,6 +116,51 @@ SUPPORTED_DISEASES = {
     },
 }
 
+YOLO_TO_DISEASE_NAME: dict[str, str] = {
+    "aloe_rust": "Aloe Rust",
+    "anthracnose": "Anthracnose",
+    "bacterial_soft_rot": "Bacterial Soft Rot",
+    "leaf_spot": "Leaf Spot",
+    "mealybug": "Mealy Bugs",
+    "root_rot": "Root Rot",
+    "scale_insect": "Scale Insects",
+    "spider_mite": "Spider Mites",
+    "sunburn": "Sunburn",
+}
+
+_yolo_disease_model = None
+_yolo_age_model = None
+
+
+def get_yolo_disease_model():
+    """Lazy loader for the YOLO disease detection model."""
+    global _yolo_disease_model
+    if _yolo_disease_model is None:
+        model_path = Path(__file__).resolve().parents[2] / "MLmodel" / "bestDisease.pt"
+        if model_path.exists():
+            try:
+                from ultralytics import YOLO
+                _yolo_disease_model = YOLO(str(model_path))
+                logger.info("YOLO disease model loaded successfully from %s", model_path)
+            except Exception as exc:
+                logger.warning("Could not load YOLO disease model: %s", exc)
+    return _yolo_disease_model
+
+
+def get_yolo_age_model():
+    """Lazy loader for the YOLO age/leaf detection model."""
+    global _yolo_age_model
+    if _yolo_age_model is None:
+        model_path = Path(__file__).resolve().parents[2] / "MLmodel" / "bestAge.pt"
+        if model_path.exists():
+            try:
+                from ultralytics import YOLO
+                _yolo_age_model = YOLO(str(model_path))
+                logger.info("YOLO age/leaf model loaded successfully from %s", model_path)
+            except Exception as exc:
+                logger.warning("Could not load YOLO age model: %s", exc)
+    return _yolo_age_model
+
 
 def decode_image_bytes(data: bytes | str) -> Image.Image:
     """Decodes raw bytes or base64 encoded string into a PIL Image."""
@@ -127,25 +176,25 @@ def decode_image_bytes(data: bytes | str) -> Image.Image:
     return img
 
 
-def analyze_aloe_characteristics(img: Image.Image) -> dict[str, Any]:
+def analyze_aloe_characteristics(
+    img: Image.Image,
+    custom_diseases: dict[str, dict[str, Any]] | None = None,
+) -> dict[str, Any]:
     """
-    Genuine computer vision analysis of the image using Pillow.
-    Evaluates:
-    - Dimensions and aspect ratio
-    - RGB and HSV color space statistics
-    - Green/Chlorophyll presence (hue range 65° - 160°)
-    - Red/Bronze pigment presence (anthocyanin / sunburn indicators)
-    - Dark necrotic spot ratio (fungal / bacterial lesions)
-    - Texture / brightness variance
+    Complete hybrid computer vision and deep learning inference pipeline:
+    1. Foliar chromatic analysis & Aloe Vera species verification.
+    2. YOLOv8 Deep Learning inference using `bestDisease.pt` (9 classes) with bounding box localization.
+    3. YOLOv8 Leaf segmentation & detection using `bestAge.pt` for real maturity classification.
+    4. Graceful foliar spectrum fallback if YOLO weights are unavailable.
     """
-    width, height = img.size
-    total_pixels = width * height
+    diseases_catalog = {**SUPPORTED_DISEASES, **(custom_diseases or {})}
 
-    # Resize to standardized analysis thumbnail for fast, consistent processing
+    width, height = img.size
+
+    # Resize to standardized analysis thumbnail for fast color spectrum analysis
     thumb = img.resize((160, 160))
     stat = ImageStat.Stat(thumb)
     mean_r, mean_g, mean_b = stat.mean[:3]
-    var_r, var_g, var_b = stat.var[:3]
 
     pixels = list(thumb.getdata())
     green_count = 0
@@ -156,20 +205,14 @@ def analyze_aloe_characteristics(img: Image.Image) -> dict[str, Any]:
 
     for r, g, b in pixels:
         brightness = (r + g + b) / 3.0
-
-        # High green dominance with succulent hue
         if g > r * 1.08 and g > b * 1.05 and g > 40:
             green_count += 1
-        # Bronze / reddish sunburn hue (high red, lower green and blue)
         elif r > g * 1.15 and r > b * 1.25 and brightness > 45:
             red_count += 1
-        # Necrotic brown (dull earthy hue, balanced low brightness)
         elif r > b * 1.1 and g > b * 0.9 and 25 < brightness < 85:
             brown_count += 1
-        # Very dark / necrotic rot
         elif brightness <= 25:
             dark_count += 1
-        # Very bright / white cottony clusters (mealybug)
         elif brightness > 215 and abs(r - g) < 20 and abs(g - b) < 20:
             white_count += 1
 
@@ -180,11 +223,9 @@ def analyze_aloe_characteristics(img: Image.Image) -> dict[str, Any]:
     dark_ratio = dark_count / sample_total
     white_ratio = white_count / sample_total
 
-    # Plant foliage chromatic score
     foliar_ratio = green_ratio + (brown_ratio * 0.7) + (red_ratio * 0.5)
 
     # 1. Aloe Vera Identification Check
-    # Plants have foliar chromaticity. Pure documents, skies, pets, human skin without foliage fail.
     is_aloe_vera = False
     rejection_reason = ""
 
@@ -207,44 +248,135 @@ def analyze_aloe_characteristics(img: Image.Image) -> dict[str, Any]:
     else:
         is_aloe_vera = True
 
-    aloe_confidence = min(98.5, max(75.0, round(70.0 + (foliar_ratio * 35.0), 1))) if is_aloe_vera else round(foliar_ratio * 40.0, 1)
+    aloe_confidence = (
+        min(98.5, max(75.0, round(70.0 + (foliar_ratio * 35.0), 1)))
+        if is_aloe_vera
+        else round(foliar_ratio * 40.0, 1)
+    )
 
-    # 2. Disease Pathology Classification (if verified as Aloe Vera)
+    # 2. Disease Pathology Classification
     detected_disease = "Healthy"
     disease_confidence = 92.0
     symptom_notes = []
+    detections_list: list[dict[str, Any]] = []
+    model_used = "Foliar Chromatic Spectrum Engine"
+
+    # Execute YOLO Deep Learning model if plant is verified Aloe Vera
+    if is_aloe_vera:
+        yolo_d = get_yolo_disease_model()
+        if yolo_d is not None:
+            model_used = "YOLOv8 bestDisease.pt Deep Learning"
+            temp_path = None
+            try:
+                with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp_file:
+                    temp_path = Path(tmp_file.name)
+                    img.save(temp_path, format="JPEG", quality=90)
+
+                results = yolo_d(str(temp_path), verbose=False, conf=0.15, imgsz=640)
+                res = results[0]
+
+                if getattr(res, "boxes", None) is not None and len(res.boxes) > 0:
+                    for box in res.boxes:
+                        class_id = int(box.cls[0])
+                        raw_label = yolo_d.names.get(class_id, str(class_id))
+                        conf = float(box.conf[0])
+                        mapped_disease = YOLO_TO_DISEASE_NAME.get(raw_label, raw_label.replace("_", " ").title())
+                        coords = [float(v) for v in box.xyxy[0].tolist()]
+
+                        detections_list.append({
+                            "class_id": class_id,
+                            "raw_label": raw_label,
+                            "disease": mapped_disease,
+                            "confidence": round(conf * 100, 1),
+                            "box": {
+                                "x1": round(coords[0], 1),
+                                "y1": round(coords[1], 1),
+                                "x2": round(coords[2], 1),
+                                "y2": round(coords[3], 1),
+                            },
+                        })
+
+                    detections_list.sort(key=lambda d: d["confidence"], reverse=True)
+                    top = detections_list[0]
+                    detected_disease = top["disease"]
+                    disease_confidence = top["confidence"]
+                    symptom_notes.append(
+                        f"YOLO deep learning detected {len(detections_list)} lesion/pest region(s). Primary: {detected_disease} ({disease_confidence}% confidence)."
+                    )
+                else:
+                    detected_disease = "Healthy"
+                    disease_confidence = round(min(97.5, max(85.0, 88.0 + (green_ratio * 10.0))), 1)
+                    symptom_notes.append("YOLO inference scanned leaves: No pathogen lesions or pest infestation detected (Healthy specimen).")
+            except Exception as exc:
+                logger.warning("YOLO disease inference exception: %s. Falling back to foliar spectrum analysis.", exc)
+            finally:
+                if temp_path and temp_path.exists():
+                    temp_path.unlink(missing_ok=True)
+
+        # Fallback to foliar chromatic analysis if YOLO model is not loaded
+        if model_used.startswith("Foliar"):
+            if dark_ratio > 0.08 and brown_ratio > 0.18:
+                detected_disease = "Root Rot"
+                disease_confidence = min(96.0, round(80.0 + (dark_ratio * 60.0), 1))
+                symptom_notes.append("Substantial dark water-soaked discoloration detected at leaf base or lower stem.")
+            elif brown_ratio > 0.14:
+                detected_disease = "Leaf Spot"
+                disease_confidence = min(94.0, round(78.0 + (brown_ratio * 60.0), 1))
+                symptom_notes.append("Multiple localized dark circular lesions detected across the foliar surface.")
+            elif red_ratio > 0.16:
+                detected_disease = "Sunburn"
+                disease_confidence = min(95.0, round(82.0 + (red_ratio * 50.0), 1))
+                symptom_notes.append("Bronze-reddish discoloration on leaf tips indicating acute UV exposure.")
+            elif white_ratio > 0.05 and brown_ratio > 0.05:
+                detected_disease = "Mealy Bugs"
+                disease_confidence = min(91.0, round(75.0 + (white_ratio * 100.0), 1))
+                symptom_notes.append("Cottony white pest residue visible around leaf crevices.")
+            elif dark_ratio > 0.05:
+                detected_disease = "Anthracnose"
+                disease_confidence = 85.0
+                symptom_notes.append("Sunken necrotic spots with dark rings identified on leaf margins.")
+            else:
+                detected_disease = "Healthy"
+                disease_confidence = round(88.0 + (green_ratio * 10.0), 1)
+                symptom_notes.append("Vibrant uniform succulent green leaves with no acute lesions or rot detected.")
+
+    disease_info = diseases_catalog.get(detected_disease, diseases_catalog.get("Healthy", SUPPORTED_DISEASES["Healthy"]))
+
+    # 3. Harvest Maturity Assessment (with YOLO Leaf Counter bestAge.pt)
+    estimated_leaf_count = max(4, min(24, int(math.sqrt(width * height) / 38) + int(green_ratio * 12)))
+    yolo_leaf_boxes: list[dict[str, Any]] = []
 
     if is_aloe_vera:
-        if dark_ratio > 0.08 and brown_ratio > 0.18:
-            detected_disease = "Root Rot"
-            disease_confidence = min(96.0, round(80.0 + (dark_ratio * 60.0), 1))
-            symptom_notes.append("Substantial dark water-soaked discoloration detected at leaf base or lower stem.")
-        elif brown_ratio > 0.14:
-            detected_disease = "Leaf Spot"
-            disease_confidence = min(94.0, round(78.0 + (brown_ratio * 60.0), 1))
-            symptom_notes.append("Multiple localized dark circular lesions detected across the foliar surface.")
-        elif red_ratio > 0.16:
-            detected_disease = "Sunburn"
-            disease_confidence = min(95.0, round(82.0 + (red_ratio * 50.0), 1))
-            symptom_notes.append("Bronze-reddish discoloration on leaf tips indicating acute UV exposure.")
-        elif white_ratio > 0.05 and brown_ratio > 0.05:
-            detected_disease = "Mealy Bugs"
-            disease_confidence = min(91.0, round(75.0 + (white_ratio * 100.0), 1))
-            symptom_notes.append("Cottony white pest residue visible around leaf crevices.")
-        elif dark_ratio > 0.05:
-            detected_disease = "Anthracnose"
-            disease_confidence = 85.0
-            symptom_notes.append("Sunken necrotic spots with dark rings identified on leaf margins.")
-        else:
-            detected_disease = "Healthy"
-            disease_confidence = round(88.0 + (green_ratio * 10.0), 1)
-            symptom_notes.append("Vibrant uniform succulent green leaves with no acute lesions or rot detected.")
+        yolo_a = get_yolo_age_model()
+        if yolo_a is not None:
+            temp_path_a = None
+            try:
+                with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp_file:
+                    temp_path_a = Path(tmp_file.name)
+                    img.save(temp_path_a, format="JPEG", quality=90)
 
-    disease_info = SUPPORTED_DISEASES.get(detected_disease, SUPPORTED_DISEASES["Healthy"])
+                results_a = yolo_a(str(temp_path_a), verbose=False, conf=0.15, imgsz=640)
+                res_a = results_a[0]
+                if getattr(res_a, "boxes", None) is not None:
+                    for box in res_a.boxes:
+                        coords = [float(v) for v in box.xyxy[0].tolist()]
+                        yolo_leaf_boxes.append({
+                            "confidence": round(float(box.conf[0]) * 100, 1),
+                            "box": {
+                                "x1": round(coords[0], 1),
+                                "y1": round(coords[1], 1),
+                                "x2": round(coords[2], 1),
+                                "y2": round(coords[3], 1),
+                            },
+                        })
+                if yolo_leaf_boxes:
+                    estimated_leaf_count = max(len(yolo_leaf_boxes), estimated_leaf_count)
+            except Exception as exc:
+                logger.warning("YOLO age inference error: %s", exc)
+            finally:
+                if temp_path_a and temp_path_a.exists():
+                    temp_path_a.unlink(missing_ok=True)
 
-    # 3. Harvest Maturity Assessment
-    # Evaluates size, estimated outer leaf count, leaf thickness, and harvest readiness
-    estimated_leaf_count = max(4, min(24, int(math.sqrt(width * height) / 38) + int(green_ratio * 12)))
     estimated_thickness_mm = round(max(5.0, min(22.0, (green_ratio * 16.0) + (foliar_ratio * 6.0))), 1)
     maturity_index = min(100, max(20, int((estimated_leaf_count * 3.5) + (estimated_thickness_mm * 2.2))))
 
@@ -272,6 +404,7 @@ def analyze_aloe_characteristics(img: Image.Image) -> dict[str, Any]:
 
     return {
         "timestamp": datetime.now(timezone.utc).isoformat(),
+        "model_engine": model_used,
         "image_dimensions": {"width": width, "height": height},
         "species_identification": {
             "is_aloe_vera": is_aloe_vera,
@@ -292,15 +425,17 @@ def analyze_aloe_characteristics(img: Image.Image) -> dict[str, Any]:
             "causes": disease_info["causes"],
             "treatments": disease_info["treatments"],
             "prevention": disease_info["prevention"],
-            "supported_categories": list(SUPPORTED_DISEASES.keys()),
+            "detections": detections_list,
+            "detections_count": len(detections_list),
+            "supported_categories": list(diseases_catalog.keys()),
         },
         "harvest_maturity": {
             "stage": maturity_stage,
             "maturity_index": maturity_index,
             "estimated_leaf_count": estimated_leaf_count,
+            "detected_leaf_regions": len(yolo_leaf_boxes),
             "estimated_leaf_thickness_mm": estimated_thickness_mm,
             "ready_for_harvest": ready_for_harvest,
             "harvest_guidance": harvest_guidance,
         },
     }
-

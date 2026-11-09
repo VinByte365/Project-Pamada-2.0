@@ -22,11 +22,19 @@ class Base64AnalyzeRequest(BaseModel):
 
 
 @router.get("/diseases")
-async def list_diseases():
-    """Returns the full catalog of supported Aloe Vera diseases and treatments."""
+async def list_diseases(db=Depends(get_db)):
+    """Returns the full catalog of supported Aloe Vera diseases and treatments, including admin updates."""
+    catalog = dict(SUPPORTED_DISEASES)
+    cursor = db["diseases"].find()
+    async for doc in cursor:
+        key = doc.get("key") or doc.get("name")
+        if key:
+            d = dict(doc)
+            d.pop("_id", None)
+            catalog[key] = {**catalog.get(key, {}), **d}
     return {
-        "count": len(SUPPORTED_DISEASES),
-        "diseases": SUPPORTED_DISEASES,
+        "count": len(catalog),
+        "diseases": catalog,
     }
 
 
@@ -71,7 +79,16 @@ async def analyze_plant_image(
             detail=f"Invalid image format: {exc}",
         ) from exc
 
-    analysis = analyze_aloe_characteristics(img)
+    # Load any admin disease overrides from DB
+    custom_diseases = {}
+    async for d in db["diseases"].find():
+        k = d.get("key") or d.get("name")
+        if k:
+            entry = dict(d)
+            entry.pop("_id", None)
+            custom_diseases[k] = entry
+
+    analysis = analyze_aloe_characteristics(img, custom_diseases=custom_diseases)
     species = analysis["species_identification"]
 
     # Reject non-Aloe Vera plants according to Phase 5 requirements
@@ -202,7 +219,16 @@ async def analyze_maturity_endpoint(
     except Exception as exc:
         raise HTTPException(status_code=400, detail=f"Invalid image: {exc}") from exc
 
-    analysis = analyze_aloe_characteristics(img)
+    # Load any admin disease overrides from DB
+    custom_diseases = {}
+    async for d in db["diseases"].find():
+        k = d.get("key") or d.get("name")
+        if k:
+            entry = dict(d)
+            entry.pop("_id", None)
+            custom_diseases[k] = entry
+
+    analysis = analyze_aloe_characteristics(img, custom_diseases=custom_diseases)
     if not analysis["species_identification"]["is_aloe_vera"]:
         raise HTTPException(
             status_code=422,

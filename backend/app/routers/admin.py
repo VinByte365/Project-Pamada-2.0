@@ -150,7 +150,44 @@ async def delete_scan_record(
 
 
 @router.get("/diseases")
-async def get_disease_catalog(admin=Depends(require_admin)):
-    """Returns the full disease library and management info."""
-    return SUPPORTED_DISEASES
+async def get_disease_catalog(admin=Depends(require_admin), db=Depends(get_db)):
+    """Returns the full disease library merged with any admin customizations from DB."""
+    catalog = dict(SUPPORTED_DISEASES)
+    cursor = db["diseases"].find()
+    async for doc in cursor:
+        key = doc.get("key") or doc.get("name")
+        if key:
+            d = dict(doc)
+            d.pop("_id", None)
+            catalog[key] = {**catalog.get(key, {}), **d}
+    return catalog
+
+
+@router.put("/diseases/{disease_key}")
+async def update_disease_treatment(
+    disease_key: str,
+    payload: dict,
+    admin=Depends(require_admin),
+    db=Depends(get_db),
+):
+    """
+    Admin endpoint to update disease descriptions, symptoms, treatments, and prevention protocols.
+    Synchronizes immediately with user-facing care guides, vision diagnoses, and scan results.
+    """
+    doc = dict(payload)
+    doc["key"] = disease_key
+    doc["updated_at"] = datetime.now(timezone.utc)
+    doc["updated_by"] = str(admin["_id"])
+
+    await db["diseases"].update_one(
+        {"key": disease_key},
+        {"$set": doc},
+        upsert=True,
+    )
+
+    updated = await db["diseases"].find_one({"key": disease_key})
+    if updated and "_id" in updated:
+        updated["id"] = str(updated.pop("_id"))
+    return {"success": True, "disease": updated}
+
 

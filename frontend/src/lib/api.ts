@@ -604,6 +604,12 @@ export const api = {
     getDiseases: async (): Promise<Record<string, DiseaseDetectionResult>> => {
       return request<Record<string, DiseaseDetectionResult>>("/admin/diseases");
     },
+    updateDisease: async (diseaseKey: string, payload: Partial<DiseaseDetectionResult>): Promise<{ success: boolean; disease: any }> => {
+      return request<{ success: boolean; disease: any }>(`/admin/diseases/${encodeURIComponent(diseaseKey)}`, {
+        method: "PUT",
+        body: JSON.stringify(payload),
+      });
+    },
   },
   chat: {
     send: async (message: string): Promise<{ reply: string }> => {
