@@ -269,3 +269,4 @@ npm --prefix frontend run build
 - **Primary Domain:** Precision Agriculture, Computer Vision, Succulent Phytopathology, Embedded IoT Monitoring
 - **Institution:** Capstone Research Team (Project PAMADA 2.0)
 - **Repository:** [https://github.com/VinByte365/Project-Pamada-2.0](https://github.com/VinByte365/Project-Pamada-2.0)
+
