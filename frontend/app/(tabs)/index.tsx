@@ -16,6 +16,7 @@ import Animated, {
 import type { SharedValue } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { AccountAccess } from '@/components/AccountAccess';
 import { AloeMark, AloeRosette } from '@/components/AloeArt';
 import { Entry } from '@/components/Entry';
 import { Eyebrow } from '@/components/Eyebrow';
@@ -33,6 +34,7 @@ import { PaperBackground } from '@/components/PaperBackground';
 import { Palette } from '@/constants/Colors';
 import { Layout } from '@/constants/Metrics';
 import { Type } from '@/constants/Typography';
+import { useAppStore } from '@/stores/useAppStore';
 
 const ease = Easing.bezier(0.32, 0.72, 0, 1).factory();
 
@@ -168,6 +170,9 @@ export default function HomeScreen() {
   const { width } = useWindowDimensions();
   const wide = width >= 860;
   const scrollY = useSharedValue(0);
+  const signedIn = useAppStore(
+    (state) => state.accountStatus === 'synced' && Boolean(state.supabaseAccessToken)
+  );
 
   const onScroll = useAnimatedScrollHandler((e) => {
     scrollY.value = e.contentOffset.y;
@@ -194,9 +199,12 @@ export default function HomeScreen() {
                 <Meta>Aloe ledger · Group 03</Meta>
               </View>
             </View>
-            <View style={styles.status}>
-              <View style={styles.statusDot} />
-              <Meta tone="ink">Local only</Meta>
+            <View style={styles.headerRight}>
+              <View style={styles.status}>
+                <View style={styles.statusDot} />
+                <Meta tone="ink">{signedIn ? 'Signed in' : 'Local only'}</Meta>
+              </View>
+              <AccountAccess />
             </View>
           </View>
 
@@ -215,6 +223,7 @@ export default function HomeScreen() {
               <View style={styles.ctaRow}>
                 <FieldButton label="Open the scanner" href="/scan/diagnosis" />
                 <FieldButton label="Browse records" href="/farms" variant="outline" />
+                <FieldButton label="Ask the field guide" href="/chat" variant="outline" />
               </View>
             </Entry>
 
@@ -352,12 +361,22 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    flexWrap: 'wrap',
     gap: 12,
   },
   brand: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
+    flexShrink: 1,
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginLeft: 'auto',
   },
   brandWord: {
     ...Type.meta,

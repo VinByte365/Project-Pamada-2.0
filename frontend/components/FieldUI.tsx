@@ -181,6 +181,7 @@ export function FieldButton({
   const router = useRouter();
   const hover = useSharedValue(0);
   const press = useSharedValue(0);
+  const [focused, setFocused] = useState(false);
 
   const handlePress = () => {
     if (disabled) return;
@@ -239,6 +240,8 @@ export function FieldButton({
       accessibilityState={{ disabled }}
       disabled={disabled}
       onPress={handlePress}
+      onFocus={() => setFocused(true)}
+      onBlur={() => setFocused(false)}
       onHoverIn={() => {
         hover.value = withTiming(1, { duration: 240, easing: ease });
       }}
@@ -279,6 +282,7 @@ export function FieldButton({
         tone.shell,
         compact && styles.buttonShellCompact,
         disabled && styles.disabled,
+        focused && styles.buttonShellFocused,
         shellMotion,
         style,
       ]}
@@ -506,6 +510,10 @@ const styles = StyleSheet.create({
   },
   buttonShellCompact: {
     borderRadius: Radius.pill,
+  },
+  buttonShellFocused: {
+    borderColor: Palette.accent,
+    boxShadow: '0 0 0 3px rgba(196,86,45,0.22)',
   },
   buttonPress: {
     flexDirection: 'row',

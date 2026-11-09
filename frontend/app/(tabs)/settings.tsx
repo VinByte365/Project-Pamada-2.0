@@ -146,7 +146,7 @@ export default function SettingsScreen() {
       </View>
 
       <View style={styles.section}>
-        <SectionHead index="03 / Shortcuts" title="The rest of the system." aside="04 routes" />
+        <SectionHead index="03 / Shortcuts" title="The rest of the system." aside="05 routes" />
         <View>
           <LedgerRow
             index="01"
@@ -157,20 +157,27 @@ export default function SettingsScreen() {
           />
           <LedgerRow
             index="02"
+            title="Field guide"
+            note="Aloe-only questions, answered when the backend is reachable"
+            value="Chat"
+            href="/chat"
+          />
+          <LedgerRow
+            index="03"
             title="Reports"
             note="Yield, grade mix and return on investment"
             value="0 files"
             href="/reports"
           />
           <LedgerRow
-            index="03"
+            index="04"
             title="Community"
             note="Field notes from other growers, optional"
             value="Optional"
             href="/community"
           />
           <LedgerRow
-            index="04"
+            index="05"
             title="System plan"
             note="Phase 1 · mobile foundation in progress"
             value="v0.1"

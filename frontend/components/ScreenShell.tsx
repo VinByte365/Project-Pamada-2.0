@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { AccountAccess } from '@/components/AccountAccess';
 import { AloeMark } from '@/components/AloeArt';
 import { Entry } from '@/components/Entry';
 import { Eyebrow } from '@/components/Eyebrow';
@@ -97,7 +98,10 @@ export function ScreenShell({
                 </View>
               )}
             </View>
-            <Text style={styles.pageIndex}>{index ?? aside ?? 'FIELD LEDGER'}</Text>
+            <View style={styles.mastheadRight}>
+              <Text style={styles.pageIndex}>{index ?? aside ?? 'FIELD LEDGER'}</Text>
+              {back ? null : <AccountAccess />}
+            </View>
           </View>
 
           <Rule style={styles.topRule} />
@@ -139,10 +143,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 16,
+    flexWrap: 'wrap',
+    gap: 12,
   },
   mastheadLeft: {
-    flex: 1,
+    flexGrow: 1,
+    flexShrink: 1,
+    minWidth: 140,
+  },
+  mastheadRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginLeft: 'auto',
   },
   brand: {
     flexDirection: 'row',
@@ -159,6 +174,7 @@ const styles = StyleSheet.create({
     ...Type.caption,
     color: Palette.dim,
     textAlign: 'right',
+    flexShrink: 1,
   },
   backButton: {
     flexDirection: 'row',

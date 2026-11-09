@@ -1,10 +1,13 @@
 from contextlib import asynccontextmanager
+import logging
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
 from .config import settings
 from .database import get_client
+
+logger = logging.getLogger("farmsystem.api")
 
 
 @asynccontextmanager
@@ -16,6 +19,7 @@ async def lifespan(app: FastAPI):
 
 from .routers import (
     auth,
+    chat,
     comments,
     community,
     diagnoses,
@@ -39,7 +43,17 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
+    @application.middleware("http")
+    async def log_unexpected_model_requests(request: Request, call_next):
+        if request.url.path == "/v1/models":
+            logger.debug(
+                "Ignored OpenCode /v1/models probe from %s",
+                request.client.host if request.client else "unknown",
+            )
+        return await call_next(request)
+
     application.include_router(auth.router)
+    application.include_router(chat.router)
     application.include_router(farms.router)
     application.include_router(plants.router)
     application.include_router(diagnoses.router)

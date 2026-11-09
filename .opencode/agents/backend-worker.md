@@ -1,7 +1,7 @@
 ---
 description: Implements and maintains the FarmSystem backend and supporting application logic, following the documented FastAPI/MongoDB structure unless the orchestrator changes it.
 mode: subagent
-model: openrouter/qwen/qwen3-coder-next
+model: opencode/glm-5.3-flash-free#max
 permissions:
   - action: "*"
     resource: "*"

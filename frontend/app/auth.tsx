@@ -1,22 +1,30 @@
-import { useRef, useState } from 'react';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { SymbolView } from 'expo-symbols';
+import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { AloeMark } from '@/components/AloeArt';
 import {
   Card,
   FieldButton,
   Meta,
-  SectionHead,
+  Rule,
   Stamp,
 } from '@/components/FieldUI';
-import { ScreenShell } from '@/components/ScreenShell';
+import { PaperBackground } from '@/components/PaperBackground';
 import { Palette } from '@/constants/Colors';
+import { Layout } from '@/constants/Metrics';
 import { Type } from '@/constants/Typography';
 import {
   signInWithEmail,
@@ -24,10 +32,13 @@ import {
   signOut,
   signUpWithEmail,
 } from '@/lib/auth/authService';
+import { syncCloudProfile } from '@/lib/auth/profileSync';
 import { isSupabaseConfigured } from '@/lib/auth/supabase';
 import { useAppStore } from '@/stores/useAppStore';
 
-type PendingAction = 'signin' | 'signup' | 'magic' | 'signout' | null;
+type AuthMode = 'signin' | 'signup';
+
+type PendingAction = 'signin' | 'signup' | 'magic' | 'signout' | 'profile' | null;
 
 type Feedback = {
   tone: 'error' | 'success' | 'info';
@@ -41,6 +52,7 @@ const busyLabels: Record<Exclude<PendingAction, null>, string> = {
   signup: 'Contacting Supabase · creating the account',
   magic: 'Contacting Supabase · requesting a sign-in link',
   signout: 'Contacting Supabase · closing the session',
+  profile: 'Contacting FastAPI · loading the MongoDB profile',
 };
 
 function describeAuthError(message: string) {
@@ -136,23 +148,52 @@ function StatusCell({
 }
 
 export default function AuthScreen() {
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const params = useLocalSearchParams<{ mode?: string }>();
+
   const accountStatus = useAppStore((state) => state.accountStatus);
   const supabaseAccessToken = useAppStore((state) => state.supabaseAccessToken);
   const setSupabaseAccessToken = useAppStore(
     (state) => state.setSupabaseAccessToken
   );
   const localProfileId = useAppStore((state) => state.localProfileId);
+  const cloudProfile = useAppStore((state) => state.cloudProfile);
+  const profileSyncStatus = useAppStore((state) => state.profileSyncStatus);
+  const profileSyncMessage = useAppStore((state) => state.profileSyncMessage);
 
+  const [mode, setMode] = useState<AuthMode>(
+    params.mode === 'signup' ? 'signup' : 'signin'
+  );
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [focused, setFocused] = useState<'email' | 'password' | null>(null);
+  const [buttonFocus, setButtonFocus] = useState<string | null>(null);
   const [pending, setPending] = useState<PendingAction>(null);
   const [feedback, setFeedback] = useState<Feedback | null>(null);
 
   const passwordRef = useRef<TextInput>(null);
   const busy = pending !== null;
   const signedIn = accountStatus === 'synced' && Boolean(supabaseAccessToken);
+
+  useEffect(() => {
+    setMode(params.mode === 'signup' ? 'signup' : 'signin');
+  }, [params.mode]);
+
+  const close = () => {
+    if (router.canGoBack()) {
+      router.back();
+      return;
+    }
+    router.replace('/');
+  };
+
+  const selectMode = (next: AuthMode) => {
+    if (busy || next === mode) return;
+    setMode(next);
+    setFeedback(null);
+  };
 
   const readEmail = () => {
     const value = email.trim();
@@ -276,6 +317,31 @@ export default function AuthScreen() {
     }
   };
 
+  const handleRetryProfile = async () => {
+    if (pending) return;
+
+    setPending('profile');
+    setFeedback(null);
+
+    try {
+      const result = await syncCloudProfile();
+      if (result.status === 'synced') {
+        setFeedback({
+          tone: 'success',
+          message: 'Cloud profile linked. The MongoDB record is now held in this session.',
+        });
+      }
+    } catch {
+      setFeedback({
+        tone: 'error',
+        message:
+          'The cloud profile could not be checked. Local records are unaffected; try again later.',
+      });
+    } finally {
+      setPending(null);
+    }
+  };
+
   const handleSignOut = async () => {
     if (pending) return;
 
@@ -306,317 +372,543 @@ export default function AuthScreen() {
     }
   };
 
+  const submit = () => {
+    if (mode === 'signup') {
+      void handleSignUp();
+      return;
+    }
+    void handleSignIn();
+  };
+
+  const primaryLabel =
+    mode === 'signup'
+      ? pending === 'signup'
+        ? 'Creating account…'
+        : 'Create account'
+      : pending === 'signin'
+        ? 'Signing in…'
+        : 'Sign in';
+
   return (
-    <ScreenShell
-      eyebrow="Account / Optional"
-      title="The cloud, on request."
-      description="Signing in never gates the field tools. This page only adds a Supabase identity for backup, multi-device access and community. The ledger keeps working from local records."
-      index="auth / optional"
-      back
+    <KeyboardAvoidingView
+      style={styles.screen}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <View style={styles.notice}>
-        <View style={styles.noticeBar} />
-        <View style={styles.noticeCopy}>
-          <Text style={styles.noticeTitle}>Local-only is still the default.</Text>
-          <Text style={styles.noticeBody}>
-            The scanner, farms, plants and records need no account. An account layers
-            sync on top; it does not replace the local ledger.
-          </Text>
-        </View>
-        <Stamp label="Optional" tone="moss" />
-      </View>
+      <PaperBackground />
+      <ScrollView
+        contentContainerStyle={[
+          styles.content,
+          {
+            paddingTop: insets.top + 14,
+            paddingBottom: insets.bottom + 40,
+          },
+        ]}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        <View
+          accessibilityViewIsModal
+          style={styles.frame}
+        >
+          <View style={styles.grabber} />
 
-      <Card tone="ink">
-        <View style={styles.statusHead}>
-          <View style={styles.statusCopy}>
-            <Meta tone="cream">Account state</Meta>
-            <Text style={styles.statusTitle}>
-              {signedIn ? 'Linked to the cloud.' : 'Local-only, as intended.'}
-            </Text>
-          </View>
-          <Stamp
-            label={signedIn ? 'Signed in' : 'Local only'}
-            tone="cream"
-          />
-        </View>
-
-        <Text style={styles.statusBody}>
-          {signedIn
-            ? 'A Supabase session is held on this device. Cloud operations can use it, while offline records remain the source of truth.'
-            : 'No cloud session is active. Everything on this device continues to work without an account or a connection.'}
-        </Text>
-
-        <View style={styles.statusGrid}>
-          <StatusCell
-            label="Local identity"
-            value={localProfileId ? 'Present' : 'Not created'}
-            note={localProfileId ? 'Stored on this device' : 'Create one in Settings'}
-          />
-          <StatusCell
-            label="Session token"
-            value={supabaseAccessToken ? 'Active' : 'None'}
-            note={
-              supabaseAccessToken
-                ? 'Secured on this device'
-                : 'No cloud access'
-            }
-          />
-        </View>
-
-        {signedIn ? (
-          <View style={styles.signOutRow}>
-            <FieldButton
-              label={pending === 'signout' ? 'Signing out…' : 'Sign out'}
-              onPress={() => void handleSignOut()}
-              disabled={busy}
-              variant="cream"
-              compact
-            />
-            {pending === 'signout' ? (
-              <ActivityIndicator size="small" color={Palette.accent} />
-            ) : null}
-            <Text style={styles.signOutNote}>
-              Signing out keeps every local record on the device.
-            </Text>
-          </View>
-        ) : null}
-      </Card>
-
-      <View style={styles.section}>
-        <SectionHead
-          index="01 / Access"
-          title={signedIn ? 'One session at a time.' : 'One identity, when you want it.'}
-          aside={signedIn ? 'Session active' : 'Email access'}
-          note={
-            signedIn
-              ? 'The active session is shown above. Sign out before using a different account.'
-              : 'Use the same email and password for either path. Creating an account also asks Supabase to send a confirmation email when that setting is enabled.'
-          }
-        />
-
-        {feedback ? <AuthNotice tone={feedback.tone} message={feedback.message} /> : null}
-
-        {!isSupabaseConfigured ? (
-          <AuthNotice
-            tone="error"
-            message="Supabase is not configured in this build. Set EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY to enable cloud sign-in. Local-only use is unaffected."
-          />
-        ) : null}
-
-        {signedIn ? (
-          <Card>
-            <View style={styles.linkedRow}>
-              <View style={styles.linkedCopy}>
-                <Meta tone="accent">Link established</Meta>
-                <Text style={styles.linkedTitle}>This device is signed in.</Text>
-                <Text style={styles.linkedBody}>
-                  Use the sign-out control above to return to local-only mode. Signing
-                  out does not delete farms, plants, scans or drafts on this device.
-                </Text>
-              </View>
-              <Stamp label="Cloud on" tone="moss" />
+          <View style={styles.masthead}>
+            <View style={styles.brand}>
+              <AloeMark size={24} color={Palette.moss} />
+              <Meta tone="ink">FarmSystem</Meta>
             </View>
-          </Card>
-        ) : (
-          <Card>
-            <View style={styles.formHead}>
-              <View style={styles.formHeadCopy}>
-                <Meta tone="accent">Email & password</Meta>
-                <Text style={styles.formTitle}>Sign in or create an account.</Text>
-              </View>
+
+            <View style={styles.mastheadRight}>
               <Stamp
-                label={isSupabaseConfigured ? 'Cloud optional' : 'Not configured'}
-                tone={isSupabaseConfigured ? 'outline' : 'accent'}
+                label={signedIn ? 'Signed in' : 'Local only'}
+                tone={signedIn ? 'moss' : 'outline'}
               />
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Close account sheet"
+                hitSlop={10}
+                onPress={close}
+                onFocus={() => setButtonFocus('close')}
+                onBlur={() =>
+                  setButtonFocus((current) => (current === 'close' ? null : current))
+                }
+                style={({ pressed }) => [
+                  styles.close,
+                  buttonFocus === 'close' && styles.focusRing,
+                  pressed && styles.pressed,
+                ]}
+              >
+                <SymbolView
+                  name={{ ios: 'xmark', android: 'close', web: 'close' }}
+                  size={16}
+                  weight="light"
+                  tintColor={Palette.text}
+                />
+              </Pressable>
             </View>
+          </View>
 
-            <Text style={styles.formIntro}>
-              Nothing uploads just by signing in. Records move only when the sync queue
-              runs, and the local copy remains authoritative.
+          <Rule />
+
+          <View style={styles.head}>
+            <View style={styles.eyebrowRow}>
+              <View style={styles.eyebrowRule} />
+              <Meta>Account / Optional</Meta>
+            </View>
+            <Text accessibilityRole="header" style={styles.title}>
+              The cloud, on request.
             </Text>
+            <Text style={styles.description}>
+              Signing in never gates the field tools. An account adds a Supabase
+              identity for backup, multi-device access and community. The ledger
+              keeps working from local records.
+            </Text>
+          </View>
 
-            <View style={styles.form}>
-              <View style={styles.field}>
-                <View style={styles.fieldLabelRow}>
-                  <Meta>Email address</Meta>
-                  <Text style={styles.fieldHint}>Used for sign-in only</Text>
+          <View style={styles.notice}>
+            <View style={styles.noticeBar} />
+            <View style={styles.noticeCopy}>
+              <Text style={styles.noticeTitle}>Local-only is still the default.</Text>
+              <Text style={styles.noticeBody}>
+                The scanner, farms, plants and records need no account. An account
+                layers sync on top; it does not replace the local ledger.
+              </Text>
+            </View>
+            <Stamp label="Optional" tone="moss" />
+          </View>
+
+          <Card tone="ink">
+            <View style={styles.cardBody}>
+              <View style={styles.statusHead}>
+                <View style={styles.statusCopy}>
+                  <Meta tone="cream">Account state</Meta>
+                  <Text style={styles.statusTitle}>
+                    {signedIn ? 'Linked to the cloud.' : 'Local-only, as intended.'}
+                  </Text>
                 </View>
-                <TextInput
-                  value={email}
-                  onChangeText={setEmail}
-                  onFocus={() => setFocused('email')}
-                  onBlur={() =>
-                    setFocused((current) => (current === 'email' ? null : current))
-                  }
-                  placeholder="grower@example.com"
-                  placeholderTextColor={Palette.dim}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  autoComplete="email"
-                  textContentType="emailAddress"
-                  returnKeyType="next"
-                  onSubmitEditing={() => passwordRef.current?.focus()}
-                  editable={!busy}
-                  accessibilityLabel="Email address"
-                  style={[styles.input, focused === 'email' && styles.inputFocused]}
-                  selectionColor={Palette.accent}
+                <Stamp
+                  label={signedIn ? 'Signed in' : 'Local only'}
+                  tone="cream"
                 />
               </View>
 
-              <View style={styles.field}>
-                <View style={styles.fieldLabelRow}>
-                  <Meta>Password</Meta>
-                  <Text style={styles.fieldHint}>Six characters minimum</Text>
+              <Text style={styles.statusBody}>
+                {signedIn
+                  ? 'A Supabase session is held on this device. Cloud operations can use it, while offline records remain the source of truth.'
+                  : 'No cloud session is active. Everything on this device continues to work without an account or a connection.'}
+              </Text>
+
+              <View style={styles.statusGrid}>
+                <StatusCell
+                  label="Local identity"
+                  value={localProfileId ? 'Present' : 'Not created'}
+                  note={localProfileId ? 'Stored on this device' : 'Create one in Settings'}
+                />
+                <StatusCell
+                  label="Session token"
+                  value={supabaseAccessToken ? 'Active' : 'None'}
+                  note={
+                    supabaseAccessToken
+                      ? 'Secured on this device'
+                      : 'No cloud access'
+                  }
+                />
+                <StatusCell
+                  label="Cloud profile"
+                  value={
+                    cloudProfile
+                      ? cloudProfile.email ?? cloudProfile.name ?? 'Linked'
+                      : profileSyncStatus === 'syncing'
+                        ? 'Loading'
+                        : 'Not loaded'
+                  }
+                  note={
+                    cloudProfile
+                      ? 'MongoDB record'
+                      : profileSyncStatus === 'offline'
+                        ? 'Backend unreachable'
+                        : profileSyncStatus === 'unauthorized'
+                          ? 'Verification failed'
+                          : 'Retry from Account'
+                  }
+                />
+              </View>
+
+              {profileSyncStatus === 'syncing' ? (
+                <View style={styles.profileSyncRow} accessibilityLiveRegion="polite">
+                  <ActivityIndicator size="small" color={Palette.accent} />
+                  <Text style={styles.profileSyncText}>
+                    Checking the cloud profile…
+                  </Text>
                 </View>
-                <View
-                  style={[
-                    styles.passwordShell,
-                    focused === 'password' && styles.passwordShellFocused,
-                  ]}
-                >
-                  <TextInput
-                    ref={passwordRef}
-                    value={password}
-                    onChangeText={setPassword}
-                    onFocus={() => setFocused('password')}
+              ) : null}
+
+              {profileSyncMessage ? (
+                <AuthNotice
+                  tone={
+                    profileSyncStatus === 'unauthorized' ||
+                    profileSyncStatus === 'error'
+                      ? 'error'
+                      : 'info'
+                  }
+                  message={profileSyncMessage}
+                />
+              ) : null}
+
+              {signedIn && feedback ? (
+                <AuthNotice tone={feedback.tone} message={feedback.message} />
+              ) : null}
+
+              {signedIn ? (
+                <View style={styles.signOutRow}>
+                  <FieldButton
+                    label={pending === 'signout' ? 'Signing out…' : 'Sign out'}
+                    onPress={() => void handleSignOut()}
+                    disabled={busy}
+                    variant="cream"
+                    compact
+                  />
+                  {pending === 'signout' ? (
+                    <ActivityIndicator size="small" color={Palette.accent} />
+                  ) : null}
+                  {profileSyncStatus !== 'synced' &&
+                  profileSyncStatus !== 'syncing' ? (
+                    <FieldButton
+                      label="Retry profile sync"
+                      onPress={() => void handleRetryProfile()}
+                      disabled={busy}
+                      variant="cream"
+                      compact
+                    />
+                  ) : null}
+                  <Text style={styles.signOutNote}>
+                    Signing out keeps every local record on the device.
+                  </Text>
+                </View>
+              ) : null}
+            </View>
+          </Card>
+
+          {!signedIn ? (
+            <Card>
+              <View style={styles.cardBody}>
+                <View style={styles.formHead}>
+                  <View style={styles.formHeadCopy}>
+                    <Meta tone="accent">Email & password</Meta>
+                    <Text style={styles.formTitle}>
+                      {mode === 'signup'
+                        ? 'Create a cloud account.'
+                        : 'Sign in to the cloud.'}
+                    </Text>
+                  </View>
+                  <Stamp
+                    label={isSupabaseConfigured ? 'Cloud optional' : 'Not configured'}
+                    tone={isSupabaseConfigured ? 'outline' : 'accent'}
+                  />
+                </View>
+
+                {feedback ? (
+                  <AuthNotice tone={feedback.tone} message={feedback.message} />
+                ) : null}
+
+                {!isSupabaseConfigured ? (
+                  <AuthNotice
+                    tone="error"
+                    message="Supabase is not configured in this build. Set EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY to enable cloud sign-in. Local-only use is unaffected."
+                  />
+                ) : null}
+
+                <View accessibilityRole="tablist" style={styles.modeSwitch}>
+                  <Pressable
+                    accessibilityRole="tab"
+                    accessibilityLabel="Sign in"
+                    accessibilityState={{ selected: mode === 'signin', disabled: busy }}
+                    disabled={busy}
+                    onPress={() => selectMode('signin')}
+                    onFocus={() => setButtonFocus('mode-signin')}
                     onBlur={() =>
-                      setFocused((current) =>
-                        current === 'password' ? null : current
+                      setButtonFocus((current) =>
+                        current === 'mode-signin' ? null : current
                       )
                     }
-                    placeholder="Your password"
-                    placeholderTextColor={Palette.dim}
-                    secureTextEntry={!showPassword}
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                    autoComplete="current-password"
-                    textContentType="password"
-                    returnKeyType="go"
-                    onSubmitEditing={() => void handleSignIn()}
-                    editable={!busy}
-                    accessibilityLabel="Password"
-                    accessibilityHint="At least six characters when creating an account."
-                    style={styles.passwordInput}
-                    selectionColor={Palette.accent}
-                  />
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel={
-                      showPassword ? 'Hide password' : 'Show password'
-                    }
-                    hitSlop={8}
-                    onPress={() => setShowPassword((current) => !current)}
+                    style={({ pressed }) => [
+                      styles.modeTab,
+                      mode === 'signin' && styles.modeTabActive,
+                      buttonFocus === 'mode-signin' && styles.focusRing,
+                      pressed && styles.pressed,
+                    ]}
                   >
-                    <Text style={styles.reveal}>
-                      {showPassword ? 'Hide' : 'Show'}
+                    <Text
+                      style={[
+                        styles.modeLabel,
+                        mode === 'signin' && styles.modeLabelActive,
+                      ]}
+                    >
+                      Sign in
+                    </Text>
+                  </Pressable>
+
+                  <Pressable
+                    accessibilityRole="tab"
+                    accessibilityLabel="Create account"
+                    accessibilityState={{ selected: mode === 'signup', disabled: busy }}
+                    disabled={busy}
+                    onPress={() => selectMode('signup')}
+                    onFocus={() => setButtonFocus('mode-signup')}
+                    onBlur={() =>
+                      setButtonFocus((current) =>
+                        current === 'mode-signup' ? null : current
+                      )
+                    }
+                    style={({ pressed }) => [
+                      styles.modeTab,
+                      mode === 'signup' && styles.modeTabActive,
+                      buttonFocus === 'mode-signup' && styles.focusRing,
+                      pressed && styles.pressed,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.modeLabel,
+                        mode === 'signup' && styles.modeLabelActive,
+                      ]}
+                    >
+                      Create account
                     </Text>
                   </Pressable>
                 </View>
+
+                <Text style={styles.formIntro}>
+                  {mode === 'signup'
+                    ? 'The account is created with Supabase. If confirmation is enabled, open the email before signing in. Local records are untouched.'
+                    : 'Use the email and password for this account. Nothing uploads just by signing in; records move only when the sync queue runs.'}
+                </Text>
+
+                <View style={styles.form}>
+                  <View style={styles.field}>
+                    <View style={styles.fieldLabelRow}>
+                      <Meta>Email address</Meta>
+                      <Text style={styles.fieldHint}>Used for sign-in only</Text>
+                    </View>
+                    <TextInput
+                      value={email}
+                      onChangeText={setEmail}
+                      onFocus={() => setFocused('email')}
+                      onBlur={() =>
+                        setFocused((current) => (current === 'email' ? null : current))
+                      }
+                      placeholder="grower@example.com"
+                      placeholderTextColor={Palette.dim}
+                      keyboardType="email-address"
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                      autoComplete="email"
+                      textContentType="emailAddress"
+                      returnKeyType="next"
+                      onSubmitEditing={() => passwordRef.current?.focus()}
+                      editable={!busy}
+                      accessibilityLabel="Email address"
+                      style={[styles.input, focused === 'email' && styles.inputFocused]}
+                      selectionColor={Palette.accent}
+                    />
+                  </View>
+
+                  <View style={styles.field}>
+                    <View style={styles.fieldLabelRow}>
+                      <Meta>Password</Meta>
+                      <Text style={styles.fieldHint}>
+                        {mode === 'signup' ? 'Six characters minimum' : 'Required'}
+                      </Text>
+                    </View>
+                    <View
+                      style={[
+                        styles.passwordShell,
+                        focused === 'password' && styles.passwordShellFocused,
+                      ]}
+                    >
+                      <TextInput
+                        ref={passwordRef}
+                        value={password}
+                        onChangeText={setPassword}
+                        onFocus={() => setFocused('password')}
+                        onBlur={() =>
+                          setFocused((current) =>
+                            current === 'password' ? null : current
+                          )
+                        }
+                        placeholder="Your password"
+                        placeholderTextColor={Palette.dim}
+                        secureTextEntry={!showPassword}
+                        autoCapitalize="none"
+                        autoCorrect={false}
+                        autoComplete={
+                          mode === 'signup' ? 'new-password' : 'current-password'
+                        }
+                        textContentType={
+                          mode === 'signup' ? 'newPassword' : 'password'
+                        }
+                        returnKeyType="go"
+                        onSubmitEditing={submit}
+                        editable={!busy}
+                        accessibilityLabel="Password"
+                        accessibilityHint="At least six characters when creating an account."
+                        style={styles.passwordInput}
+                        selectionColor={Palette.accent}
+                      />
+                      <Pressable
+                        accessibilityRole="button"
+                        accessibilityLabel={
+                          showPassword ? 'Hide password' : 'Show password'
+                        }
+                        hitSlop={8}
+                        onPress={() => setShowPassword((current) => !current)}
+                      >
+                        <Text style={styles.reveal}>
+                          {showPassword ? 'Hide' : 'Show'}
+                        </Text>
+                      </Pressable>
+                    </View>
+                  </View>
+                </View>
+
+                <View style={styles.formActions}>
+                  <FieldButton
+                    label={primaryLabel}
+                    onPress={submit}
+                    disabled={busy || !isSupabaseConfigured}
+                    variant="ink"
+                  />
+                </View>
+
+                <View style={styles.magicBlock}>
+                  <FieldButton
+                    label={pending === 'magic' ? 'Sending link…' : 'Email a sign-in link'}
+                    onPress={() => void handleMagicLink()}
+                    disabled={busy || !isSupabaseConfigured}
+                    variant="accent"
+                    compact
+                  />
+                  <Text style={styles.magicNote}>
+                    Magic links need Supabase email delivery and a redirect URL that
+                    returns to this app. Email and password work without that setup.
+                  </Text>
+                </View>
+
+                {pending ? (
+                  <View style={styles.busyRow} accessibilityLiveRegion="polite">
+                    <ActivityIndicator size="small" color={Palette.accent} />
+                    <Text style={styles.busyText}>{busyLabels[pending]}</Text>
+                  </View>
+                ) : null}
               </View>
-            </View>
+            </Card>
+          ) : null}
 
-            <View style={styles.formActions}>
-              <FieldButton
-                label={pending === 'signin' ? 'Signing in…' : 'Sign in'}
-                onPress={() => void handleSignIn()}
-                disabled={busy || !isSupabaseConfigured}
-                variant="ink"
-              />
-              <FieldButton
-                label={pending === 'signup' ? 'Creating…' : 'Create account'}
-                onPress={() => void handleSignUp()}
-                disabled={busy || !isSupabaseConfigured}
-                variant="outline"
-              />
-            </View>
-
-            <View style={styles.magicBlock}>
-              <FieldButton
-                label={pending === 'magic' ? 'Sending link…' : 'Email a sign-in link'}
-                onPress={() => void handleMagicLink()}
-                disabled={busy || !isSupabaseConfigured}
-                variant="accent"
-                compact
-              />
-              <Text style={styles.magicNote}>
-                Magic links need Supabase email delivery and a redirect URL that returns
-                to this app. Email and password work without that setup.
-              </Text>
-            </View>
-
-            {pending ? (
-              <View style={styles.busyRow} accessibilityLiveRegion="polite">
-                <ActivityIndicator size="small" color={Palette.accent} />
-                <Text style={styles.busyText}>{busyLabels[pending]}</Text>
-              </View>
-            ) : null}
-          </Card>
-        )}
-      </View>
-
-      <View style={styles.section}>
-        <SectionHead
-          index="02 / Boundaries"
-          title="What connecting changes."
-          aside="Nothing hidden"
-        />
-
-        <View style={styles.benefits}>
-          {[
-            [
-              '01',
-              'Cloud backup',
-              'A second copy of farms, plants and scans, written when sync runs.',
-            ],
-            [
-              '02',
-              'Multi-device ledger',
-              'Open the same records from another phone after signing in.',
-            ],
-            [
-              '03',
-              'Community',
-              'Publishing and replies require an account. Reading stays optional.',
-            ],
-          ].map(([id, title, note]) => (
-            <View key={id} style={styles.benefitRow}>
-              <Text style={styles.benefitIndex}>{id}</Text>
-              <View style={{ flex: 1, gap: 3 }}>
-                <Text style={styles.benefitTitle}>{title}</Text>
-                <Text style={styles.benefitNote}>{note}</Text>
-              </View>
-            </View>
-          ))}
-        </View>
-
-        <View style={styles.unchanged}>
-          <View style={styles.unchangedCopy}>
-            <Meta tone="accent">Unchanged</Meta>
-            <Text style={styles.unchangedTitle}>The scanner never asks for a login.</Text>
-            <Text style={styles.unchangedBody}>
-              Diagnosis, maturity and grading continue to work offline. Auth adds an
-              identity layer above the ledger; it does not replace local records.
+          <View style={styles.footRow}>
+            <Text style={styles.footnote}>
+              Cloud backup, multi-device access and community are the only additions.
+              The scanner never asks for a login. Automatic upload waits for the mobile
+              sync queue, so local records are untouched until sync is built.
             </Text>
+            <FieldButton
+              label="Return to the field"
+              onPress={close}
+              variant="outline"
+              compact
+            />
           </View>
-          <FieldButton
-            label="Offline identity"
-            href="/modal"
-            variant="outline"
-            compact
-          />
         </View>
-
-        <Text style={styles.footnote}>
-          This screen establishes a Supabase session only. Automatic upload waits for
-          the mobile sync queue, so local records are untouched until sync is built.
-        </Text>
-      </View>
-    </ScreenShell>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: Palette.background,
+  },
+  content: {
+    paddingHorizontal: Layout.gutter,
+  },
+  frame: {
+    width: '100%',
+    maxWidth: 620,
+    alignSelf: 'center',
+    gap: 22,
+  },
+  grabber: {
+    width: 38,
+    height: 4,
+    borderRadius: 999,
+    backgroundColor: 'rgba(22,26,20,0.18)',
+    alignSelf: 'center',
+    marginBottom: 2,
+  },
+  masthead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  brand: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 9,
+    flexShrink: 1,
+  },
+  mastheadRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginLeft: 'auto',
+  },
+  close: {
+    width: 36,
+    height: 36,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: Palette.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  focusRing: {
+    borderColor: Palette.accent,
+    boxShadow: '0 0 0 3px rgba(196,86,45,0.18)',
+  },
+  pressed: {
+    opacity: 0.55,
+  },
+  head: {
+    gap: 12,
+    paddingTop: 2,
+  },
+  eyebrowRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 9,
+  },
+  eyebrowRule: {
+    width: 18,
+    height: 2,
+    backgroundColor: Palette.accent,
+  },
+  title: {
+    ...Type.displaySmall,
+    fontSize: 38,
+    lineHeight: 40,
+    letterSpacing: -1.5,
+    maxWidth: 540,
+  },
+  description: {
+    ...Type.body,
+    fontSize: 14.5,
+    lineHeight: 22,
+    maxWidth: 520,
+  },
   notice: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -636,7 +928,7 @@ const styles = StyleSheet.create({
   },
   noticeCopy: {
     flex: 1,
-    minWidth: 200,
+    minWidth: 190,
     gap: 4,
   },
   noticeTitle: {
@@ -650,77 +942,6 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     color: Palette.muted,
     maxWidth: 520,
-  },
-  statusHead: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    gap: 14,
-  },
-  statusCopy: {
-    flex: 1,
-    minWidth: 0,
-    gap: 4,
-  },
-  statusTitle: {
-    ...Type.title,
-    fontSize: 26,
-    lineHeight: 29,
-    color: Palette.cream,
-  },
-  statusBody: {
-    ...Type.body,
-    fontSize: 13.5,
-    lineHeight: 21,
-    color: Palette.creamMuted,
-    maxWidth: 520,
-  },
-  statusGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 16,
-    borderTopWidth: 1,
-    borderTopColor: Palette.inkLine,
-    paddingTop: 16,
-    marginTop: 4,
-  },
-  statusCell: {
-    flexGrow: 1,
-    flexBasis: 130,
-    gap: 4,
-  },
-  statusValue: {
-    fontFamily: 'Satoshi-Bold',
-    fontSize: 16,
-    lineHeight: 20,
-    color: Palette.cream,
-  },
-  statusNote: {
-    ...Type.caption,
-    fontSize: 8,
-    lineHeight: 13,
-    color: Palette.creamDim,
-  },
-  signOutRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'center',
-    gap: 14,
-    borderTopWidth: 1,
-    borderTopColor: Palette.inkLine,
-    paddingTop: 16,
-    marginTop: 4,
-  },
-  signOutNote: {
-    ...Type.caption,
-    fontSize: 8.5,
-    lineHeight: 14,
-    color: Palette.creamMuted,
-    flex: 1,
-    minWidth: 160,
-  },
-  section: {
-    gap: 22,
   },
   feedback: {
     flexDirection: 'row',
@@ -744,6 +965,86 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     color: Palette.body,
   },
+  cardBody: {
+    gap: 14,
+  },
+  statusHead: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 14,
+  },
+  statusCopy: {
+    flex: 1,
+    minWidth: 0,
+    gap: 4,
+  },
+  statusTitle: {
+    ...Type.title,
+    fontSize: 24,
+    lineHeight: 28,
+    color: Palette.cream,
+  },
+  statusBody: {
+    ...Type.body,
+    fontSize: 13,
+    lineHeight: 20,
+    color: Palette.creamMuted,
+    maxWidth: 520,
+  },
+  statusGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 16,
+    borderTopWidth: 1,
+    borderTopColor: Palette.inkLine,
+    paddingTop: 14,
+  },
+  statusCell: {
+    flexGrow: 1,
+    flexBasis: 130,
+    gap: 4,
+  },
+  profileSyncRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  profileSyncText: {
+    ...Type.caption,
+    fontSize: 9,
+    lineHeight: 14,
+    color: Palette.creamMuted,
+  },
+  statusValue: {
+    fontFamily: 'Satoshi-Bold',
+    fontSize: 15,
+    lineHeight: 20,
+    color: Palette.cream,
+  },
+  statusNote: {
+    ...Type.caption,
+    fontSize: 8,
+    lineHeight: 13,
+    color: Palette.creamDim,
+  },
+  signOutRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: 14,
+    borderTopWidth: 1,
+    borderTopColor: Palette.inkLine,
+    paddingTop: 14,
+  },
+  signOutNote: {
+    ...Type.caption,
+    fontSize: 8.5,
+    lineHeight: 14,
+    color: Palette.creamMuted,
+    flex: 1,
+    minWidth: 160,
+  },
   formHead: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -753,21 +1054,54 @@ const styles = StyleSheet.create({
   },
   formHeadCopy: {
     flex: 1,
-    minWidth: 200,
+    minWidth: 190,
     gap: 4,
   },
   formTitle: {
     ...Type.subtitle,
-    fontSize: 23,
-    lineHeight: 27,
+    fontSize: 22,
+    lineHeight: 26,
+  },
+  modeSwitch: {
+    flexDirection: 'row',
+    gap: 4,
+    padding: 4,
+    borderWidth: 1,
+    borderColor: Palette.border,
+    borderRadius: 999,
+    backgroundColor: Palette.shell,
+  },
+  modeTab: {
+    flex: 1,
+    minHeight: 38,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  modeTabActive: {
+    backgroundColor: Palette.ink,
+    borderColor: Palette.ink,
+  },
+  modeLabel: {
+    ...Type.label,
+    fontSize: 12,
+    color: Palette.muted,
+    textAlign: 'center',
+  },
+  modeLabelActive: {
+    fontFamily: 'Satoshi-Bold',
+    color: Palette.cream,
   },
   formIntro: {
     ...Type.body,
     fontSize: 13,
     lineHeight: 20,
     color: Palette.muted,
-    maxWidth: 480,
-    marginTop: 2,
+    maxWidth: 500,
   },
   form: {
     gap: 16,
@@ -845,14 +1179,12 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 10,
     alignItems: 'center',
-    marginTop: 2,
   },
   magicBlock: {
     gap: 8,
     borderTopWidth: 1,
     borderTopColor: Palette.line,
     paddingTop: 14,
-    marginTop: 2,
   },
   magicNote: {
     ...Type.caption,
@@ -871,88 +1203,23 @@ const styles = StyleSheet.create({
     fontSize: 9,
     color: Palette.muted,
   },
-  linkedRow: {
+  footRow: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'flex-end',
     justifyContent: 'space-between',
-    gap: 14,
     flexWrap: 'wrap',
-  },
-  linkedCopy: {
-    flex: 1,
-    minWidth: 220,
-    gap: 4,
-  },
-  linkedTitle: {
-    ...Type.subtitle,
-    fontSize: 22,
-  },
-  linkedBody: {
-    ...Type.body,
-    fontSize: 13,
-    lineHeight: 20,
-    color: Palette.muted,
-    maxWidth: 480,
-  },
-  benefits: {
+    gap: 16,
     borderTopWidth: 1,
     borderTopColor: Palette.border,
-  },
-  benefitRow: {
-    flexDirection: 'row',
-    gap: 14,
-    paddingVertical: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: Palette.line,
-  },
-  benefitIndex: {
-    ...Type.caption,
-    color: Palette.accent,
-    width: 24,
-    paddingTop: 2,
-  },
-  benefitTitle: {
-    ...Type.label,
-    fontFamily: 'Satoshi-Bold',
-    fontSize: 14,
-  },
-  benefitNote: {
-    ...Type.body,
-    fontSize: 12.5,
-    lineHeight: 18,
-    color: Palette.muted,
-  },
-  unchanged: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 20,
-    flexWrap: 'wrap',
-    borderTopWidth: 1,
-    borderTopColor: Palette.border,
-    paddingTop: 20,
-  },
-  unchangedCopy: {
-    flex: 1,
-    minWidth: 220,
-    gap: 6,
-  },
-  unchangedTitle: {
-    ...Type.title,
-    fontSize: 24,
-    lineHeight: 28,
-  },
-  unchangedBody: {
-    ...Type.body,
-    fontSize: 13,
-    lineHeight: 20,
-    color: Palette.muted,
-    maxWidth: 480,
+    paddingTop: 18,
   },
   footnote: {
     ...Type.caption,
     fontSize: 8.5,
     lineHeight: 14,
     color: Palette.dim,
-    maxWidth: 520,
+    maxWidth: 420,
+    flex: 1,
+    minWidth: 190,
   },
 });

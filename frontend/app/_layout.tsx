@@ -15,6 +15,7 @@ export {
 
 export const unstable_settings = {
   initialRouteName: '(tabs)',
+  anchor: '(tabs)',
 };
 
 SplashScreen.preventAutoHideAsync();
@@ -74,7 +75,15 @@ export default function RootLayout() {
             animation: 'slide_from_bottom',
           }}
         />
-        <Stack.Screen name="auth" options={{ animation: 'slide_from_right' }} />
+        <Stack.Screen
+          name="auth"
+          options={{
+            presentation: 'modal',
+            animation: 'slide_from_bottom',
+            gestureEnabled: true,
+            contentStyle: { backgroundColor: Palette.background },
+          }}
+        />
       </Stack>
     </QueryClientProvider>
   );
