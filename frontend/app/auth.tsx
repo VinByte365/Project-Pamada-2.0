@@ -356,6 +356,7 @@ export default function AuthScreen() {
       }
 
       setSupabaseAccessToken(null);
+      useAppStore.getState().clearCloudProfile();
       setEmail('');
       setPassword('');
       setFeedback({

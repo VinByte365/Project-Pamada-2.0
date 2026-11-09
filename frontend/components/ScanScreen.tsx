@@ -27,6 +27,7 @@ import { Entry } from '@/components/Entry';
 import { FieldButton, Meta, Stamp } from '@/components/FieldUI';
 import { ScreenShell } from '@/components/ScreenShell';
 import { Palette } from '@/constants/Colors';
+import { useAppStore } from '@/stores/useAppStore';
 import { Type } from '@/constants/Typography';
 import {
   detectDisease,
@@ -34,6 +35,7 @@ import {
   isMlOfflineError,
   type DiseaseDetectionResult,
 } from '@/lib/api/ml';
+import { createScan, updateScanResult } from '@/lib/db/scans';
 
 const scanlines = require('../assets/images/scanlines.png') as number;
 
@@ -453,6 +455,7 @@ export function ScanScreen({
 }) {
   const [permission, requestPermission, getPermission] = useCameraPermissions();
   const [captured, setCaptured] = useState<CapturedFrame | null>(null);
+  const [scanRecordId, setScanRecordId] = useState<string | null>(null);
   const [capturing, setCapturing] = useState(false);
   const [cameraReady, setCameraReady] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
@@ -467,6 +470,7 @@ export function ScanScreen({
   const analysisRequest = useRef(0);
   const isFocused = useIsFocused();
   const isDiagnosis = mode.key === 'diagnosis';
+  const ownerId = useAppStore((state) => (state.accountStatus === 'synced' ? state.supabaseUserId : state.localProfileId));
   const modePosition = scanModes.findIndex((item) => item.key === mode.key);
   const nextMode = scanModes[(modePosition + 1) % scanModes.length];
 
@@ -521,6 +525,7 @@ export function ScanScreen({
     analysisRequest.current += 1;
     setAnalysis({ status: 'idle' });
     setCaptured(null);
+    setScanRecordId(null);
     setCaptureError(null);
     setCameraReady(false);
   };
@@ -549,6 +554,15 @@ export function ScanScreen({
         height: picture.height,
       });
       setCameraReady(false);
+      try {
+        const record = await createScan({
+          mode: mode.key,
+          result: { status: 'captured', width: picture.width, height: picture.height },
+        }, ownerId);
+        setScanRecordId(record.id);
+      } catch {
+        // Scan history is best-effort; capture still succeeds.
+      }
     } catch {
       setCaptureError(
         'The shutter fired but the frame could not be read. Keep the preview open and try again.'
@@ -570,6 +584,9 @@ export function ScanScreen({
       const result = await detectDisease(captured.uri);
       if (analysisRequest.current !== requestId) return;
       setAnalysis({ status: 'success', result });
+      if (scanRecordId) {
+        void updateScanResult(scanRecordId, { status: 'analyzed', result });
+      }
     } catch (error) {
       if (analysisRequest.current !== requestId) return;
 

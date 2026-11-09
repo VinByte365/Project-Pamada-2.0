@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useFocusEffect } from 'expo-router';
+import { useCallback, useEffect, useState } from 'react';
 import {
   Pressable,
   StyleSheet,
@@ -19,13 +20,11 @@ import {
 import { ScreenShell } from '@/components/ScreenShell';
 import { Palette } from '@/constants/Colors';
 import { Type } from '@/constants/Typography';
+import { useAppStore } from '@/stores/useAppStore';
+import { createFarm, listFarms, type FarmRecord } from '@/lib/db/farms';
+import { enqueueFarmSync } from '@/lib/sync/syncManager';
 
-type Farm = {
-  id: string;
-  name: string;
-  area: string;
-  status: 'Active' | 'Fallow';
-};
+type Farm = FarmRecord;
 
 type Filter = 'All' | 'Active' | 'Fallow';
 
@@ -58,7 +57,7 @@ function FarmForm({ onCancel, onSave }: { onCancel: () => void; onSave: (farm: F
   const save = () => {
     const label = name.trim() || 'Untitled plot';
     const size = area.trim() || '—';
-    onSave({ id: `${Date.now()}`, name: label, area: size, status: 'Active' });
+    onSave({ id: `${Date.now()}`, name: label, area: size, status: 'Active', createdAt: '', updatedAt: '' });
   };
 
   return (
@@ -103,7 +102,7 @@ function FarmForm({ onCancel, onSave }: { onCancel: () => void; onSave: (farm: F
       </View>
       <View style={styles.formFoot}>
         <Text style={styles.formNote}>
-          Preview only — records are held for this session until local storage lands in Phase 2.
+          Stored on this device. No account needed.
         </Text>
         <FieldButton label="Save draft" onPress={save} variant="accent" compact />
       </View>
@@ -113,8 +112,39 @@ function FarmForm({ onCancel, onSave }: { onCancel: () => void; onSave: (farm: F
 
 export default function FarmsScreen() {
   const [filter, setFilter] = useState<Filter>('All');
-  const [farms, setFarms] = useState<Farm[]>([]);
   const [showForm, setShowForm] = useState(false);
+  const [farms, setFarms] = useState<Farm[]>([]);
+  const [loadingFarms, setLoadingFarms] = useState(true);
+  const ownerId = useAppStore((state) => (state.accountStatus === 'synced' ? state.supabaseUserId : state.localProfileId));
+
+  const loadFarms = useCallback(async () => {
+    setLoadingFarms(true);
+    try {
+      const rows = await listFarms(ownerId);
+      setFarms(rows);
+    } catch {
+      setFarms([]);
+    } finally {
+      setLoadingFarms(false);
+    }
+  }, [ownerId]);
+
+  useEffect(() => {
+    void loadFarms();
+  }, [loadFarms]);
+
+  useFocusEffect(
+    useCallback(() => {
+      void loadFarms();
+    }, [loadFarms]),
+  );
+
+  const saveFarm = async (farm: Farm) => {
+    const saved = await createFarm({ name: farm.name, area: farm.area }, ownerId);
+    await enqueueFarmSync(saved, ownerId);
+    setFarms((current) => [saved, ...current]);
+    setShowForm(false);
+  };
 
   const visible = farms.filter((farm) => filter === 'All' || farm.status === filter);
   const hectares = farms.reduce((total, farm) => {
@@ -140,8 +170,7 @@ export default function FarmsScreen() {
         <FarmForm
           onCancel={() => setShowForm(false)}
           onSave={(farm) => {
-            setFarms((current) => [...current, farm]);
-            setShowForm(false);
+            void saveFarm(farm);
           }}
         />
       ) : null}

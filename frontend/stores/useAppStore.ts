@@ -1,10 +1,6 @@
 import { create } from 'zustand';
 
-import type {
-  CloudProfile,
-  ProfileIssueStatus,
-  ProfileSyncStatus,
-} from '@/lib/auth/types';
+import type { CloudProfile, ProfileSyncStatus } from '@/lib/auth/types';
 
 type AccountStatus = 'local_only' | 'synced';
 
@@ -12,72 +8,35 @@ interface AppState {
   localProfileId: string | null;
   accountStatus: AccountStatus;
   supabaseAccessToken: string | null;
+  supabaseUserId: string | null;
   cloudProfile: CloudProfile | null;
   profileSyncStatus: ProfileSyncStatus;
   profileSyncMessage: string | null;
   setLocalProfile: (id: string) => void;
   setAccountStatus: (status: AccountStatus) => void;
   setSupabaseAccessToken: (token: string | null) => void;
+  setSupabaseUserId: (id: string | null) => void;
   setProfileSyncing: () => void;
   setCloudProfile: (profile: CloudProfile) => void;
-  setProfileSyncIssue: (status: ProfileIssueStatus, message: string) => void;
+  setProfileSyncIssue: (status: Exclude<ProfileSyncStatus, 'idle' | 'syncing' | 'synced'>, message: string) => void;
+  clearCloudProfile: () => void;
 }
-
-const signedOutProfileState = {
-  cloudProfile: null,
-  profileSyncStatus: 'idle' as const,
-  profileSyncMessage: null,
-};
 
 export const useAppStore = create<AppState>((set) => ({
   localProfileId: null,
   accountStatus: 'local_only',
   supabaseAccessToken: null,
-  ...signedOutProfileState,
+  supabaseUserId: null,
+  cloudProfile: null,
+  profileSyncStatus: 'idle',
+  profileSyncMessage: null,
   setLocalProfile: (id) => set({ localProfileId: id }),
   setAccountStatus: (status) => set({ accountStatus: status }),
   setSupabaseAccessToken: (token) =>
-    set((state) => {
-      if (!token) {
-        return {
-          supabaseAccessToken: null,
-          accountStatus: 'local_only',
-          ...signedOutProfileState,
-        };
-      }
-
-      // A fresh sign-in starts with no cloud profile. Token refreshes keep the
-      // profile and its sync state so the shell does not flicker.
-      if (!state.supabaseAccessToken) {
-        return {
-          supabaseAccessToken: token,
-          accountStatus: 'synced',
-          ...signedOutProfileState,
-        };
-      }
-
-      return { supabaseAccessToken: token, accountStatus: 'synced' };
-    }),
-  setProfileSyncing: () =>
-    set((state) =>
-      state.supabaseAccessToken
-        ? { profileSyncStatus: 'syncing', profileSyncMessage: null }
-        : {},
-    ),
-  setCloudProfile: (profile) =>
-    set((state) =>
-      state.supabaseAccessToken
-        ? {
-            cloudProfile: profile,
-            profileSyncStatus: 'synced',
-            profileSyncMessage: null,
-          }
-        : {},
-    ),
-  setProfileSyncIssue: (status, message) =>
-    set((state) =>
-      state.supabaseAccessToken
-        ? { profileSyncStatus: status, profileSyncMessage: message }
-        : {},
-    ),
+    set({ supabaseAccessToken: token, accountStatus: token ? 'synced' : 'local_only' }),
+  setSupabaseUserId: (id) => set({ supabaseUserId: id }),
+  setProfileSyncing: () => set({ profileSyncStatus: 'syncing', profileSyncMessage: null }),
+  setCloudProfile: (profile) => set({ cloudProfile: profile, profileSyncStatus: 'synced', profileSyncMessage: null }),
+  setProfileSyncIssue: (status, message) => set({ profileSyncStatus: status, profileSyncMessage: message }),
+  clearCloudProfile: () => set({ cloudProfile: null, profileSyncStatus: 'idle', profileSyncMessage: null }),
 }));

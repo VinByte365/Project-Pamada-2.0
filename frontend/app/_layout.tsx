@@ -2,12 +2,16 @@ import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
+import { AppState } from 'react-native';
 import { useEffect } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import 'react-native-reanimated';
 
 import { Palette } from '@/constants/Colors';
+import { createLocalProfile } from '@/lib/db/profile';
 import { useSupabaseAuthSync } from '@/hooks/useSupabaseAuth';
+import { useAppStore } from '@/stores/useAppStore';
+import { syncNow } from '@/lib/sync/syncManager';
 
 export {
   ErrorBoundary,
@@ -31,6 +35,16 @@ const queryClient = new QueryClient({
 
 export default function RootLayout() {
   useSupabaseAuthSync();
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') {
+        void syncNow().catch(() => undefined);
+      }
+    });
+    return () => subscription.remove();
+  }, []);
+
   const [loaded, error] = useFonts({
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
     'CabinetGrotesk-Regular': require('../assets/fonts/CabinetGrotesk-Regular.ttf'),
@@ -44,8 +58,12 @@ export default function RootLayout() {
   });
 
   useEffect(() => {
-    if (error) throw error;
-  }, [error]);
+    createLocalProfile()
+      .then((profile) => {
+        useAppStore.getState().setLocalProfile(profile.id);
+      })
+      .catch(() => undefined);
+  }, []);
 
   useEffect(() => {
     if (loaded) {

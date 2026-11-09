@@ -54,7 +54,7 @@
 
 ## Capabilities Pending
 
-- Durable offline storage for mobile records.
+- Durable offline storage for farms, plants, and scan capture history is implemented in SQLite; sync queue is implemented for farms and plants.
 - On-device inference for diagnosis, maturity, and grading.
 - Camera image capture and retention.
 - Raspberry Pi sensor pairing and live readings.

@@ -103,7 +103,11 @@ function describeProfileFailure(error: unknown): ProfileSyncResult {
     );
   }
 
-  logger.error('Cloud profile request failed unexpectedly');
+  logger.error('Cloud profile request failed unexpectedly:', {
+    name: error instanceof Error ? error.name : typeof error,
+    message: error instanceof Error ? error.message : String(error),
+    stack: error instanceof Error ? error.stack : undefined,
+  });
   return reportProfileIssue(
     'error',
     'Signed in on this device, but the cloud profile could not be loaded. Local records are unaffected — retry from Account.',

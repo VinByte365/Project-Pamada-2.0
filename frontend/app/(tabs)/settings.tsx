@@ -14,6 +14,7 @@ import { ScreenShell } from '@/components/ScreenShell';
 import { Palette } from '@/constants/Colors';
 import { Type } from '@/constants/Typography';
 import { useAppStore } from '@/stores/useAppStore';
+import { syncNow, type SyncResult } from '@/lib/sync/syncManager';
 
 function PreferenceRow({
   title,
@@ -44,6 +45,19 @@ export default function SettingsScreen() {
   const [wifiOnly, setWifiOnly] = useState(true);
   const [autoSave, setAutoSave] = useState(true);
   const [haptics, setHaptics] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [syncResult, setSyncResult] = useState<SyncResult | null>(null);
+
+  const handleSync = async () => {
+    if (syncing) return;
+    setSyncing(true);
+    try {
+      const result = await syncNow();
+      setSyncResult(result);
+    } finally {
+      setSyncing(false);
+    }
+  };
 
   return (
     <ScreenShell
@@ -142,6 +156,20 @@ export default function SettingsScreen() {
               <Text style={styles.dataNote}>{note}</Text>
             </View>
           ))}
+        </View>
+        <View style={{ gap: 10 }}>
+          <FieldButton
+            label={syncing ? 'Syncing…' : 'Sync now'}
+            onPress={() => void handleSync()}
+            disabled={syncing}
+            variant="outline"
+            compact
+          />
+          {syncResult ? (
+            <Text style={styles.prefFootnote}>
+              {syncResult.message} Uploaded {syncResult.uploaded}, downloaded {syncResult.downloaded}, pending {syncResult.failed}.
+            </Text>
+          ) : null}
         </View>
       </View>
 
