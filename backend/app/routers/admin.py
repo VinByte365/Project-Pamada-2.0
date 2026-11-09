@@ -191,3 +191,81 @@ async def update_disease_treatment(
     return {"success": True, "disease": updated}
 
 
+@router.get("/plants")
+async def list_all_plants_for_admin(admin=Depends(require_admin), db=Depends(get_db)):
+    """Admin endpoint to audit and manage all grower plant records across the system."""
+    cursor = db["plants"].find().sort("created_at", -1).limit(100)
+    plants = []
+    async for p in cursor:
+        doc = dict(p)
+        doc["id"] = str(doc.pop("_id"))
+        doc["owner_id"] = str(doc.get("owner_id", ""))
+        plants.append(doc)
+    return plants
+
+
+@router.get("/analytics")
+async def get_system_analytics(admin=Depends(require_admin), db=Depends(get_db)):
+    """Comprehensive analytics and epidemiological distribution across all scans."""
+    total_scans = await db["scans"].count_documents({})
+    healthy_scans = await db["scans"].count_documents({"diagnosis": "Healthy"})
+    diseased_scans = total_scans - healthy_scans
+
+    # Disease frequency distribution
+    disease_counts: dict[str, int] = {}
+    for disease_name in SUPPORTED_DISEASES.keys():
+        if disease_name != "Healthy":
+            cnt = await db["scans"].count_documents({"diagnosis": disease_name})
+            disease_counts[disease_name] = cnt
+
+    # Maturity distribution
+    mature_count = await db["scans"].count_documents({"readyForHarvest": True})
+    developing_count = await db["scans"].count_documents({"maturityStage": {"$regex": "Developing", "$options": "i"}})
+    young_count = max(0, total_scans - mature_count - developing_count)
+
+    return {
+        "total_scans": total_scans,
+        "healthy_count": healthy_scans,
+        "diseased_count": diseased_scans,
+        "healthy_rate_pct": round((healthy_scans / total_scans) * 100, 1) if total_scans > 0 else 0,
+        "disease_distribution": disease_counts,
+        "maturity_distribution": {
+            "Mature / Ready for Harvest": mature_count,
+            "Developing": developing_count,
+            "Young / Juvenile": young_count,
+        },
+    }
+
+
+@router.get("/activity")
+async def get_system_activity_logs(admin=Depends(require_admin), db=Depends(get_db)):
+    """System-wide chronological activity log."""
+    logs = []
+
+    # Recent scans
+    scans_cursor = db["scans"].find().sort("createdAt", -1).limit(15)
+    async for s in scans_cursor:
+        logs.append({
+            "id": f"scan-{str(s['_id'])}",
+            "type": "scan",
+            "title": f"Plant Scan: {s.get('plantName', 'Aloe Specimen')}",
+            "description": f"Classification: {s.get('diagnosis', 'Healthy')} ({s.get('confidence', 0)}%)",
+            "timestamp": s.get("createdAt", datetime.now(timezone.utc)).isoformat() if hasattr(s.get("createdAt"), "isoformat") else str(s.get("createdAt")),
+        })
+
+    # Recent users
+    users_cursor = db["users"].find().sort("created_at", -1).limit(10)
+    async for u in users_cursor:
+        logs.append({
+            "id": f"user-{str(u['_id'])}",
+            "type": "user",
+            "title": f"User Registration: {u.get('name', 'New Grower')}",
+            "description": f"Email: {u.get('email', '—')} · Role: {u.get('role', 'grower')}",
+            "timestamp": u.get("created_at", datetime.now(timezone.utc)).isoformat() if hasattr(u.get("created_at"), "isoformat") else str(u.get("created_at")),
+        })
+
+    logs.sort(key=lambda x: str(x.get("timestamp", "")), reverse=True)
+    return logs[:20]
+
+
+

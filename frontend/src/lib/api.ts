@@ -610,6 +610,28 @@ export const api = {
         body: JSON.stringify(payload),
       });
     },
+    getPlants: async (): Promise<Plant[]> => {
+      return request<Plant[]>("/admin/plants");
+    },
+    getAnalytics: async (): Promise<{
+      total_scans: number;
+      healthy_count: number;
+      diseased_count: number;
+      healthy_rate_pct: number;
+      disease_distribution: Record<string, number>;
+      maturity_distribution: Record<string, number>;
+    }> => {
+      return request<any>("/admin/analytics");
+    },
+    getActivity: async (): Promise<Array<{
+      id: string;
+      type: "scan" | "user";
+      title: string;
+      description: string;
+      timestamp: string;
+    }>> => {
+      return request<any[]>("/admin/activity");
+    },
   },
   chat: {
     send: async (message: string): Promise<{ reply: string }> => {

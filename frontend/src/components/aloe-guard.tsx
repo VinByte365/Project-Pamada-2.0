@@ -13,7 +13,7 @@ const publicLinks = [
   ["About", "/about"],
 ];
 
-const baseAppLinks = [
+const growerLinks = [
   ["Overview", "/dashboard", "O"],
   ["AI Scanner", "/detect", "✦"],
   ["Scan history", "/history", "◷"],
@@ -29,6 +29,20 @@ const baseAppLinks = [
   ["Community", "/community", "C"],
   ["My profile", "/profile", "U"],
   ["Settings", "/settings", "⚙"],
+];
+
+const adminLinks = [
+  ["Admin Dashboard", "/admin", "📊"],
+  ["User Management", "/admin?tab=users", "👥"],
+  ["Plant Records", "/admin?tab=plants", "🌿"],
+  ["Scan Records Audit", "/admin?tab=scans", "🔬"],
+  ["Disease Library", "/admin?tab=diseases", "🩺"],
+  ["Recommendations", "/admin?tab=recommendations", "💡"],
+  ["AI Model Status", "/admin?tab=ai_model", "🧠"],
+  ["Reports & Analytics", "/admin?tab=reports", "📈"],
+  ["Activity Logs", "/admin?tab=activity", "📋"],
+  ["Admin Profile", "/profile", "U"],
+  ["System Settings", "/settings", "⚙"],
 ];
 
 export function SiteHeader({ active = "Home" }: { active?: string }) {
@@ -112,20 +126,26 @@ export function AppFrame({ active, children }: { active: string; children: React
     router.push("/login");
   }
 
-  const visibleLinks = [
-    ...baseAppLinks,
-    ...(role === "admin" ? [["Admin", "/admin", "★"]] : []),
-  ];
+  const isAdminView = active.toLowerCase().includes("admin");
+
+  const visibleLinks = isAdminView
+    ? adminLinks
+    : [
+        ...growerLinks,
+        ...(role === "admin" ? [["Admin Console", "/admin", "★"]] : []),
+      ];
 
   return (
     <main className="app-shell">
       <div className="app-layout">
         <aside className="app-sidebar">
-          <Link className="logo sidebar-logo" href="/dashboard">
+          <Link className="logo sidebar-logo" href={isAdminView ? "/admin" : "/dashboard"}>
             <span className="logo-leaf" aria-hidden="true" />
             <span>Aloe<span>Guard</span></span>
           </Link>
-          <p className="sidebar-caption">FARMSYSTEM WORKSPACE</p>
+          <p className="sidebar-caption">
+            {isAdminView ? "ADMINISTRATION CONSOLE" : "GROWER WORKSPACE"}
+          </p>
           <nav className="sidebar-links" aria-label="Account navigation">
             {visibleLinks.map(([label, href, icon]) => (
               <Link className={active === label ? "active" : ""} key={href} href={href}>
@@ -135,6 +155,37 @@ export function AppFrame({ active, children }: { active: string; children: React
             ))}
           </nav>
           <div className="sidebar-bottom">
+            {isAdminView ? (
+              <Link
+                href="/dashboard"
+                className="secondary-button"
+                style={{
+                  textAlign: "center",
+                  fontSize: "11px",
+                  padding: "6px 8px",
+                  display: "block",
+                  width: "100%",
+                  marginBottom: "8px",
+                }}
+              >
+                🌱 Switch to Grower View
+              </Link>
+            ) : role === "admin" ? (
+              <Link
+                href="/admin"
+                className="primary-button"
+                style={{
+                  textAlign: "center",
+                  fontSize: "11px",
+                  padding: "6px 8px",
+                  display: "block",
+                  width: "100%",
+                  marginBottom: "8px",
+                }}
+              >
+                ★ Enter Admin Console
+              </Link>
+            ) : null}
             <div className="user-chip">
               <span className="avatar">{name.charAt(0).toUpperCase()}</span>
               <span>
