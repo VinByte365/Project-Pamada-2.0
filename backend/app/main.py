@@ -26,6 +26,7 @@ from .routers import (
     farms,
     gradings,
     maturity,
+    ml,
     plants,
     reports,
     sensors,
@@ -54,6 +55,7 @@ def create_app() -> FastAPI:
 
     application.include_router(auth.router)
     application.include_router(chat.router)
+    application.include_router(ml.router)
     application.include_router(farms.router)
     application.include_router(plants.router)
     application.include_router(diagnoses.router)

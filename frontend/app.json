@@ -33,7 +33,15 @@
           "backgroundColor": "#F1ECE0"
         }
       ],
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow FarmSystem to use the camera to frame aloe vera leaves for on-device preview.",
+          "recordAudioAndroid": false,
+          "barcodeScannerEnabled": false
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true
