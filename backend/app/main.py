@@ -17,6 +17,7 @@ async def lifespan(app: FastAPI):
 from .routers import (
     admin,
     auth,
+    chat,
     comments,
     community,
     diagnoses,
@@ -44,6 +45,7 @@ def create_app() -> FastAPI:
     application.include_router(auth.router)
     application.include_router(admin.router)
     application.include_router(vision.router)
+    application.include_router(chat.router)
     application.include_router(farms.router)
     application.include_router(plants.router)
     application.include_router(diagnoses.router)

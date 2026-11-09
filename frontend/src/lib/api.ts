@@ -605,6 +605,14 @@ export const api = {
       return request<Record<string, DiseaseDetectionResult>>("/admin/diseases");
     },
   },
+  chat: {
+    send: async (message: string): Promise<{ reply: string }> => {
+      return request<{ reply: string }>("/chat", {
+        method: "POST",
+        body: JSON.stringify({ message }),
+      });
+    },
+  },
   health: async (): Promise<{ status: string }> => {
     return request<{ status: string }>("/health");
   },

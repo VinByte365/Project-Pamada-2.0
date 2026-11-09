@@ -20,6 +20,7 @@ const baseAppLinks = [
   ["Diagnoses", "/diagnoses", "D"],
   ["Maturity", "/maturity", "M"],
   ["Care guides", "/recommendations", "♥"],
+  ["AI Chatbot", "/chat", "💬"],
   ["Soil sensors", "/sensors", "S"],
   ["Plants", "/plants", "P"],
   ["Farms", "/farms", "F"],
