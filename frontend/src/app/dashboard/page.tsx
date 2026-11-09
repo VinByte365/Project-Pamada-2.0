@@ -65,6 +65,11 @@ export default function DashboardPage() {
             return;
           }
         } else {
+          // Admins are restricted from grower dashboard; redirect directly to Admin Console
+          if (userData.role === "admin") {
+            router.replace("/admin");
+            return;
+          }
           setName(userData.name || "Grower");
           setRole(userData.role || "grower");
         }

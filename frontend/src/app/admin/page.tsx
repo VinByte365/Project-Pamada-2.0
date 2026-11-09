@@ -311,9 +311,6 @@ function AdminContent() {
             <button className="secondary-button" onClick={loadAdminData} type="button">
               ↻ Refresh Telemetry
             </button>
-            <Link href="/dashboard" className="secondary-button">
-              🌱 Grower View
-            </Link>
           </div>
         </div>
 

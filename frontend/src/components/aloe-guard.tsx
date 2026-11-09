@@ -47,9 +47,15 @@ const adminLinks = [
 
 export function SiteHeader({ active = "Home" }: { active?: string }) {
   const [hasToken, setHasToken] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     setHasToken(Boolean(getToken()));
+    if (getToken()) {
+      api.auth.me().then((u) => {
+        if (u?.role === "admin") setIsAdmin(true);
+      }).catch(() => {});
+    }
   }, []);
 
   return (
@@ -66,7 +72,9 @@ export function SiteHeader({ active = "Home" }: { active?: string }) {
         ))}
       </nav>
       {hasToken ? (
-        <Link className="login-button" href="/dashboard">Dashboard →</Link>
+        <Link className="login-button" href={isAdmin ? "/admin" : "/dashboard"}>
+          {isAdmin ? "Admin Console →" : "Dashboard →"}
+        </Link>
       ) : (
         <Link className="login-button" href="/login">Log in</Link>
       )}
@@ -110,15 +118,25 @@ export function AppFrame({ active, children }: { active: string; children: React
           }
           return;
         }
-        setName(user.name || "Grower");
+        setName(user.name || (user.role === "admin" ? "Administrator" : "Grower"));
         setRole(user.role || "grower");
+
+        // If user is admin and visits a grower-only page, redirect immediately to /admin
+        if (
+          user.role === "admin" &&
+          !active.toLowerCase().includes("admin") &&
+          active !== "Settings" &&
+          active !== "My profile"
+        ) {
+          router.replace("/admin");
+        }
       })
       .catch(() => {
         if (!getToken()) {
           router.push("/login");
         }
       });
-  }, [router]);
+  }, [router, active]);
 
   async function logout() {
     await api.auth.logout();
@@ -126,25 +144,19 @@ export function AppFrame({ active, children }: { active: string; children: React
     router.push("/login");
   }
 
-  const isAdminView = active.toLowerCase().includes("admin");
-
-  const visibleLinks = isAdminView
-    ? adminLinks
-    : [
-        ...growerLinks,
-        ...(role === "admin" ? [["Admin Console", "/admin", "★"]] : []),
-      ];
+  const isAdmin = role === "admin" || active.toLowerCase().includes("admin");
+  const visibleLinks = isAdmin ? adminLinks : growerLinks;
 
   return (
     <main className="app-shell">
       <div className="app-layout">
         <aside className="app-sidebar">
-          <Link className="logo sidebar-logo" href={isAdminView ? "/admin" : "/dashboard"}>
+          <Link className="logo sidebar-logo" href={isAdmin ? "/admin" : "/dashboard"}>
             <span className="logo-leaf" aria-hidden="true" />
             <span>Aloe<span>Guard</span></span>
           </Link>
           <p className="sidebar-caption">
-            {isAdminView ? "ADMINISTRATION CONSOLE" : "GROWER WORKSPACE"}
+            {isAdmin ? "ADMINISTRATION CONSOLE" : "GROWER WORKSPACE"}
           </p>
           <nav className="sidebar-links" aria-label="Account navigation">
             {visibleLinks.map(([label, href, icon]) => (
@@ -155,37 +167,6 @@ export function AppFrame({ active, children }: { active: string; children: React
             ))}
           </nav>
           <div className="sidebar-bottom">
-            {isAdminView ? (
-              <Link
-                href="/dashboard"
-                className="secondary-button"
-                style={{
-                  textAlign: "center",
-                  fontSize: "11px",
-                  padding: "6px 8px",
-                  display: "block",
-                  width: "100%",
-                  marginBottom: "8px",
-                }}
-              >
-                🌱 Switch to Grower View
-              </Link>
-            ) : role === "admin" ? (
-              <Link
-                href="/admin"
-                className="primary-button"
-                style={{
-                  textAlign: "center",
-                  fontSize: "11px",
-                  padding: "6px 8px",
-                  display: "block",
-                  width: "100%",
-                  marginBottom: "8px",
-                }}
-              >
-                ★ Enter Admin Console
-              </Link>
-            ) : null}
             <div className="user-chip">
               <span className="avatar">{name.charAt(0).toUpperCase()}</span>
               <span>
@@ -201,14 +182,24 @@ export function AppFrame({ active, children }: { active: string; children: React
         </aside>
         <div className="app-main">
           <div className="mobile-brand">
-            <Link className="logo" href="/dashboard">
+            <Link className="logo" href={isAdmin ? "/admin" : "/dashboard"}>
               <span className="logo-leaf" aria-hidden="true" />
               <span>Aloe<span>Guard</span></span>
             </Link>
             <div style={{ display: "flex", gap: "10px" }}>
-              <Link href="/dashboard">Dashboard</Link>
-              <Link href="/farms">Farms</Link>
-              <Link href="/plants">Plants</Link>
+              {isAdmin ? (
+                <>
+                  <Link href="/admin">Admin Console</Link>
+                  <Link href="/admin?tab=users">Users</Link>
+                  <Link href="/admin?tab=scans">Scans</Link>
+                </>
+              ) : (
+                <>
+                  <Link href="/dashboard">Dashboard</Link>
+                  <Link href="/farms">Farms</Link>
+                  <Link href="/plants">Plants</Link>
+                </>
+              )}
             </div>
           </div>
           {children}

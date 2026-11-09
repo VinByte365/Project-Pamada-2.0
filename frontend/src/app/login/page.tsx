@@ -17,7 +17,11 @@ export default function LoginPage() {
       api.auth.me()
         .then((u) => {
           if (u) {
-            router.replace("/dashboard");
+            if (u.role === "admin") {
+              router.replace("/admin");
+            } else {
+              router.replace("/dashboard");
+            }
           }
         })
         .catch(() => {});
@@ -38,8 +42,12 @@ export default function LoginPage() {
       if (result.token) {
         setToken(result.token);
       }
-      // Full navigation guarantees cookies and session state are active across SSR and client components
-      window.location.href = "/dashboard";
+      // Redirect admins directly to Admin Console; growers to Cultivation Dashboard
+      if (result.user?.role === "admin") {
+        window.location.href = "/admin";
+      } else {
+        window.location.href = "/dashboard";
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Unable to sign in.");
       setBusy(false);
