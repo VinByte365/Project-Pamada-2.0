@@ -168,10 +168,10 @@ export function AppFrame({ active, children }: { active: string; children: React
           </nav>
           <div className="sidebar-bottom">
             <div className="user-chip">
-              <span className="avatar">{name.charAt(0).toUpperCase()}</span>
+              <span className="avatar">{(name || "U").charAt(0).toUpperCase()}</span>
               <span>
-                <strong>{name}</strong>
-                <small>{role.charAt(0).toUpperCase() + role.slice(1)}</small>
+                <strong>{name || "User"}</strong>
+                <small>{(role || "grower").charAt(0).toUpperCase() + (role || "grower").slice(1)}</small>
               </span>
             </div>
             <button className="sidebar-logout" onClick={logout} type="button">

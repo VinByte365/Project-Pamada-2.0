@@ -414,7 +414,7 @@ function AdminContent() {
                           </td>
                           <td>
                             <span className={`tag-pill ${u.role === "admin" ? "warning" : "success"}`}>
-                              {u.role}
+                              {u.role || "grower"}
                             </span>
                           </td>
                           <td style={{ fontSize: "11px" }}>{u.created_at ? new Date(u.created_at).toLocaleDateString() : "—"}</td>
@@ -529,7 +529,7 @@ function AdminContent() {
                       <td><code>{u.email}</code></td>
                       <td>
                         <span className={`tag-pill ${u.role === "admin" ? "warning" : "success"}`}>
-                          {u.role.toUpperCase()}
+                          {(u.role || "grower").toUpperCase()}
                         </span>
                       </td>
                       <td>{u.plants_count ?? 0} plants</td>
@@ -541,7 +541,7 @@ function AdminContent() {
                             type="button"
                             className="secondary-button"
                             style={{ fontSize: "11px", padding: "4px 8px" }}
-                            onClick={() => handleRoleToggle(u.id, u.role)}
+                            onClick={() => handleRoleToggle(u.id, u.role || "grower")}
                             disabled={busy}
                           >
                             {u.role === "admin" ? "Demote to Grower" : "Promote to Admin"}
