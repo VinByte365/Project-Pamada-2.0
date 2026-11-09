@@ -87,6 +87,12 @@ export default function SettingsScreen() {
 
         <View style={styles.identityFoot}>
           <Text style={styles.identityNote}>No account required for any core feature</Text>
+          <FieldButton
+            label={accountStatus === 'synced' ? 'Manage account' : 'Connect account'}
+            href="/auth"
+            variant="cream"
+            compact
+          />
         </View>
       </Card>
 

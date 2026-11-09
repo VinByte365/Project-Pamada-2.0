@@ -37,7 +37,8 @@
 
 ## Backend (Phase 5 — Complete)
 
-- Supports JWT authentication for local-only and registered account states, including password hashing.
+- Supports Supabase Auth for registered users, with FastAPI verifying Supabase JWTs and mapping users to MongoDB records.
+- Local-only users do not require Supabase Auth or backend identity.
 - Provides create, read, update, and delete capabilities for users, farms, plants, diagnoses, maturity assessments, gradings, sensor readings, profit reports, community posts, and comments.
 - Persists synchronized records in the cloud.
 - Provides synchronization endpoints between locally created records and the cloud.

@@ -60,7 +60,7 @@ backend/
 │   │   ├── sync_service.py
 │   │   └── ...
 │   └── core/                 # Cross-cutting: security, auth dependencies
-│       └── security.py       # Password hashing, JWT encode/decode
+│       └── security.py       # Supabase JWT verification and auth helpers
 ├── tests/                    # pytest tests
 ├── requirements.txt          # or pyproject.toml / uv
 ├── .env.example
@@ -111,19 +111,18 @@ MongoDB is the central source of truth for **synchronized** data (not required f
 
 ## 4. Authentication
 
-- Backend-issued **JWT** for authenticated requests.
-- Two user states (from `system_plan.md` §8):
-  - **Local-only:** the client operates with a local UUID; no server identity.
-  - **Registered (synced):** local profile associated with a server `user`; JWT protects synced/community endpoints.
-- Password hashing and JWT handling in `core/security.py`.
-- Auth dependency (current user from token) in `dependencies.py`.
+- Authentication uses **Supabase Auth** for registered users.
+- FastAPI verifies Supabase-issued JWTs and maps verified users to MongoDB `users` records.
+- Local-only users do not use Supabase Auth or FastAPI identity.
+- No local password storage or custom password hashing is used when Supabase Auth is enabled.
+- Auth dependency (current user from Supabase JWT) in `dependencies.py`.
 
 ---
 
 ## 5. API Conventions
 
 - RESTful resource paths:
-  - `/auth/*` — register, login, refresh.
+  - `/auth/*` — Supabase-backed identity endpoints (current user, profile linking, logout/session helpers).
   - `/users/*`
   - `/farms/*`, `/plants/*`, `/diagnoses/*`, `/gradings/*`, `/sensors/*`, `/reports/*`
   - `/community/posts`, `/community/posts/{id}/comments` — optional.

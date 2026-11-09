@@ -47,6 +47,7 @@ FarmSystem enhances PAMADA by adding **IoT environmental sensing, embedded proce
 | IoT / embedded | Raspberry Pi + 6-in-1 NPK/Moisture sensor | Environmental sensing & real-time farm monitoring |
 | Backend | Python + FastAPI | API / business logic / auth / optional sync |
 | Backend DB driver | motor (async) | Async MongoDB access |
+| Identity / auth | Supabase Auth | User authentication and identity management for registered/synced users; FastAPI verifies Supabase JWTs |
 | Online DB | MongoDB | Central shared storage (optional/secondary) |
 | Future web client | Next.js + TypeScript | Additional client of the same API |
 
@@ -55,6 +56,8 @@ FarmSystem enhances PAMADA by adding **IoT environmental sensing, embedded proce
 - ML runs **on-device (ONNX), offline**, per the original system plan.
 - IoT sensor data flow (Pi → local → mobile vs Pi → cloud → mobile) is **undecided**; both modes are documented as options in the hardware doc and resolved in a later phase.
 - Backend uses FastAPI + Motor (async). Pydantic v2 for schemas.
+- User authentication and identity for registered users use Supabase Auth; FastAPI verifies Supabase JWTs and maps users to MongoDB records.
+- Supabase PostgreSQL, Storage, and Realtime are not used at this stage.
 - Existing Expo scaffold (SDK 57, expo-router, TypeScript, zustand, React Query, axios) is retained as the mobile foundation.
 
 ---
@@ -159,9 +162,9 @@ MongoDB is the **central source of truth for synchronized data** when connectivi
 Two user states (from the original system plan):
 
 - **Local-only:** farmer uses a local UUID profile; all core features work offline.
-- **Registered (synced):** local profile is associated with a server account; JWT protects synced/community endpoints.
+- **Registered (synced):** local profile is associated with a Supabase Auth account; FastAPI verifies the Supabase JWT and protects synced/community endpoints.
 
-Authentication is handled by the backend; SQLite is not the authority for shared identity.
+Authentication identity is handled by Supabase Auth for registered users. FastAPI maps verified Supabase users to MongoDB records. SQLite is not the authority for shared identity. Local-only users do not use Supabase or FastAPI.
 
 ---
 

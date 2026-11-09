@@ -7,6 +7,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import 'react-native-reanimated';
 
 import { Palette } from '@/constants/Colors';
+import { useSupabaseAuthSync } from '@/hooks/useSupabaseAuth';
 
 export {
   ErrorBoundary,
@@ -28,6 +29,7 @@ const queryClient = new QueryClient({
 });
 
 export default function RootLayout() {
+  useSupabaseAuthSync();
   const [loaded, error] = useFonts({
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
     'CabinetGrotesk-Regular': require('../assets/fonts/CabinetGrotesk-Regular.ttf'),
@@ -72,6 +74,7 @@ export default function RootLayout() {
             animation: 'slide_from_bottom',
           }}
         />
+        <Stack.Screen name="auth" options={{ animation: 'slide_from_right' }} />
       </Stack>
     </QueryClientProvider>
   );
