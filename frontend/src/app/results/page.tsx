@@ -146,11 +146,16 @@ function ResultsContent() {
 
           {/* Harvest Maturity Card */}
           <div className="panel" style={{ marginTop: "20px", padding: "20px", borderRadius: "10px" }}>
-            <p className="eyebrow">HARVEST MATURITY EVALUATION</p>
+            <p className="eyebrow">HARVEST MATURITY &amp; AGE EVALUATION</p>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-              <h3 style={{ margin: "4px 0", fontSize: "18px", color: "var(--forest)" }}>
-                {scan.maturityStage || "Developing / Vegetative"}
-              </h3>
+              <div>
+                <h3 style={{ margin: "4px 0", fontSize: "18px", color: "var(--forest)" }}>
+                  {scan.maturityStage || "Developing / Vegetative"}
+                </h3>
+                <span style={{ fontSize: "12px", color: "var(--leaf)", fontWeight: 600 }}>
+                  Estimated Age: {scan.estimatedAge || "2 – 3+ Years"}
+                </span>
+              </div>
               <span className={`status-badge ${scan.readyForHarvest ? "healthy" : "pending"}`}>
                 {scan.readyForHarvest ? "✓ Harvest Ready" : "Growing"}
               </span>

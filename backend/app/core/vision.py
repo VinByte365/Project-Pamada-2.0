@@ -383,12 +383,24 @@ def analyze_aloe_characteristics(
     if maturity_index >= 75 and estimated_leaf_count >= 12 and estimated_thickness_mm >= 13.0:
         maturity_stage = "Mature / Potentially Ready for Harvest"
         ready_for_harvest = True
-        harvest_guidance = (
-            "The specimen exhibits robust mature succulent growth with thick outer leaves (>= 13-15mm) and a developed basal rosette. "
-            "Ready for selective outer leaf harvesting using a sterilized blade close to the main stem."
-        )
-    elif maturity_index >= 50:
+        if estimated_leaf_count >= 16:
+            estimated_age_range = "3 – 4+ Years (Prime Harvest)"
+            estimated_age_months = 40
+            harvest_guidance = (
+                "Fully mature prime Aloe Vera specimen with dense rosette (>= 16 leaves) and peak aloin/polysaccharide volume. "
+                "Ready for prime commercial outer leaf harvesting."
+            )
+        else:
+            estimated_age_range = "2 – 3 Years"
+            estimated_age_months = 28
+            harvest_guidance = (
+                "The specimen exhibits robust mature succulent growth with thick outer leaves (>= 13-15mm) and a developed basal rosette. "
+                "Ready for selective outer leaf harvesting using a sterilized blade close to the main stem."
+            )
+    elif maturity_index >= 50 or estimated_leaf_count >= 8:
         maturity_stage = "Developing"
+        estimated_age_range = "1 – 2 Years"
+        estimated_age_months = 18
         ready_for_harvest = False
         harvest_guidance = (
             "The plant is in an active vegetative growth stage. Outer leaves are thickening but have not reached peak gel volume. "
@@ -396,9 +408,11 @@ def analyze_aloe_characteristics(
         )
     else:
         maturity_stage = "Young / Not Yet Mature"
+        estimated_age_range = "< 1 Year (Juvenile)"
+        estimated_age_months = 6
         ready_for_harvest = False
         harvest_guidance = (
-            "Juvenile aloe vera plant with fewer than 10 leaves and thin blades (< 10mm). "
+            "Juvenile aloe vera plant with fewer than 8-10 leaves and thin blades (< 10mm). "
             "Do not harvest outer leaves; harvesting now would deplete carbohydrate reserves and stunt development."
         )
 
@@ -435,6 +449,8 @@ def analyze_aloe_characteristics(
             "estimated_leaf_count": estimated_leaf_count,
             "detected_leaf_regions": len(yolo_leaf_boxes),
             "estimated_leaf_thickness_mm": estimated_thickness_mm,
+            "estimated_age_range": estimated_age_range,
+            "estimated_age_months": estimated_age_months,
             "ready_for_harvest": ready_for_harvest,
             "harvest_guidance": harvest_guidance,
         },

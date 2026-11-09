@@ -317,16 +317,22 @@ export default function MaturityPage() {
                     </span>
                   </div>
 
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", margin: "14px 0" }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "10px", margin: "14px 0" }}>
                     <div style={{ background: "#fff", padding: "10px", borderRadius: "6px", border: "1px solid #e1e7dc" }}>
-                      <small style={{ color: "var(--muted)" }}>Estimated Outer Leaves</small>
-                      <strong style={{ display: "block", fontSize: "16px", color: "var(--forest)" }}>
+                      <small style={{ color: "var(--muted)" }}>Estimated Age</small>
+                      <strong style={{ display: "block", fontSize: "15px", color: "var(--forest)" }}>
+                        {aiResult.estimated_age_range || "2 – 3+ Years"}
+                      </strong>
+                    </div>
+                    <div style={{ background: "#fff", padding: "10px", borderRadius: "6px", border: "1px solid #e1e7dc" }}>
+                      <small style={{ color: "var(--muted)" }}>Outer Leaves</small>
+                      <strong style={{ display: "block", fontSize: "15px", color: "var(--forest)" }}>
                         ~{aiResult.estimated_leaf_count} leaves
                       </strong>
                     </div>
                     <div style={{ background: "#fff", padding: "10px", borderRadius: "6px", border: "1px solid #e1e7dc" }}>
                       <small style={{ color: "var(--muted)" }}>Basal Thickness</small>
-                      <strong style={{ display: "block", fontSize: "16px", color: "var(--forest)" }}>
+                      <strong style={{ display: "block", fontSize: "15px", color: "var(--forest)" }}>
                         {aiResult.estimated_leaf_thickness_mm} mm
                       </strong>
                     </div>

@@ -58,6 +58,7 @@ export interface MaturityAssessment {
   maturity_index?: number;
   leaf_count?: number;
   leaf_thickness_mm?: number;
+  estimated_age_range?: string;
   estimated_harvest_date?: string;
   ready_for_harvest?: boolean;
   notes?: string;
@@ -159,10 +160,13 @@ export interface DiseaseDetectionResult {
 }
 
 export interface HarvestMaturityResult {
-  stage: "Young / Not Yet Mature" | "Developing" | "Mature / Potentially Ready for Harvest" | string;
+  stage: "Young / Not Yet Mature" | "Developing" | "Mature / Potentially Ready for Harvest" | "Prime Commercial / Mature" | string;
   maturity_index: number;
   estimated_leaf_count: number;
+  detected_leaf_regions?: number;
   estimated_leaf_thickness_mm: number;
+  estimated_age_range?: string;
+  estimated_age_months?: number;
   ready_for_harvest: boolean;
   harvest_guidance: string;
 }
@@ -194,6 +198,7 @@ export interface ScanRecord {
   severity?: string;
   confidence?: number;
   maturityStage?: string;
+  estimatedAge?: string;
   readyForHarvest?: boolean;
   recommendations?: string[];
   imageUrl?: string;

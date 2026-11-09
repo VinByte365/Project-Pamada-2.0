@@ -489,13 +489,16 @@ export function Detector() {
 
                 <div style={{ background: "#fff", padding: "12px", borderRadius: "6px", border: "1px solid #e5eae3" }}>
                   <span style={{ fontSize: "11px", color: "var(--muted)", textTransform: "uppercase", fontWeight: 700 }}>
-                    Harvest Readiness
+                    Harvest Readiness &amp; Plant Age
                   </span>
                   <div style={{ fontSize: "15px", fontWeight: 700, color: "var(--forest)", marginTop: "4px" }}>
                     {analysisResult.analysis.harvest_maturity.stage}
                   </div>
+                  <div style={{ fontSize: "12px", color: "var(--leaf)", fontWeight: 600, marginTop: "2px" }}>
+                    Estimated Age: {analysisResult.analysis.harvest_maturity.estimated_age_range || "2 – 3+ Years"}
+                  </div>
                   <small style={{ color: "var(--muted)", display: "block", marginTop: "4px" }}>
-                    Leaf count: ~{analysisResult.analysis.harvest_maturity.estimated_leaf_count} · Thickness: {analysisResult.analysis.harvest_maturity.estimated_leaf_thickness_mm} mm
+                    Leaves: ~{analysisResult.analysis.harvest_maturity.estimated_leaf_count} · Thickness: {analysisResult.analysis.harvest_maturity.estimated_leaf_thickness_mm} mm
                   </small>
                 </div>
               </div>
