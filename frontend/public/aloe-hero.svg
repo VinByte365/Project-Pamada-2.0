@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 1000" fill="none">
+  <defs>
+    <linearGradient id="back" x1="104" y1="75" x2="1086" y2="988" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#aebda0"/><stop offset=".48" stop-color="#71886c"/><stop offset="1" stop-color="#354d3b"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0" cy="0" r="1" gradientTransform="matrix(0 730 -735 0 630 362)" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#e0d7aa" stop-opacity=".72"/><stop offset="1" stop-color="#e0d7aa" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="leaf1" x1="607" y1="822" x2="627" y2="141" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#284d39"/><stop offset=".56" stop-color="#6f9866"/><stop offset="1" stop-color="#bfd19c"/>
+    </linearGradient>
+    <linearGradient id="leaf2" x1="415" y1="803" x2="479" y2="210" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#244936"/><stop offset=".54" stop-color="#659365"/><stop offset="1" stop-color="#d1d8a5"/>
+    </linearGradient>
+    <linearGradient id="leaf3" x1="758" y1="813" x2="700" y2="226" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#1c4432"/><stop offset=".55" stop-color="#52815d"/><stop offset="1" stop-color="#c8d49e"/>
+    </linearGradient>
+    <linearGradient id="pot" x1="600" y1="734" x2="600" y2="974" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#ad8c68"/><stop offset="1" stop-color="#725c48"/>
+    </linearGradient>
+    <filter id="shadow" x="151" y="152" width="900" height="840" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse">
+      <feGaussianBlur stdDeviation="24"/>
+    </filter>
+  </defs>
+  <path fill="url(#back)" d="M0 0h1200v1000H0z"/>
+  <path fill="url(#glow)" d="M0 0h1200v1000H0z"/>
+  <path fill="#172f25" fill-opacity=".28" d="M0 0h1200v1000H0z"/>
+  <ellipse cx="605" cy="893" fill="#0f291f" fill-opacity=".42" rx="330" ry="50" filter="url(#shadow)"/>
+  <g stroke="#d8e2b1" stroke-opacity=".32" stroke-width="3">
+    <path fill="url(#leaf2)" d="M598 754C469 679 276 503 293 310c8-86 57-153 127-201 0 119 96 198 169 316 72 117 94 232 9 329Z"/>
+    <path fill="url(#leaf3)" d="M604 762c122-97 280-310 247-493-15-82-69-143-142-181 9 117-77 207-136 332-58 126-66 244 31 342Z"/>
+    <path fill="url(#leaf1)" d="M600 773C518 651 419 398 491 219c32-79 98-126 180-147-37 111 29 222 55 359 26 136 4 254-126 342Z"/>
+    <path fill="url(#leaf2)" d="M574 771C426 716 194 580 147 399c-21-81 3-159 56-225 32 113 151 160 253 250 102 91 158 196 118 347Z"/>
+    <path fill="url(#leaf3)" d="M627 777c144-70 361-228 391-412 13-82-17-157-76-218-21 115-136 174-229 275-93 102-139 212-86 355Z"/>
+  </g>
+  <g stroke="#e6e9c0" stroke-opacity=".45" stroke-width="3" stroke-linecap="round">
+    <path d="M604 777C580 559 590 344 669 72"/><path d="M590 762C505 567 405 401 322 128"/>
+    <path d="M618 771c37-211 115-408 176-630"/><path d="M570 764C418 624 304 519 191 260"/>
+    <path d="M636 770c132-172 229-318 323-575"/>
+  </g>
+  <path fill="url(#pot)" stroke="#d1b38a" stroke-opacity=".58" stroke-width="4" d="m381 738 439 1-46 221H428l-47-222Z"/>
+  <path fill="#c0a17b" d="M368 713c0-18 15-33 33-33h400c18 0 33 15 33 33v35H368v-35Z"/>
+  <path stroke="#e0c39a" stroke-opacity=".45" stroke-width="5" d="m438 785 29 142m266-142-29 142"/>
+</svg>

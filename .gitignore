@@ -1,0 +1,49 @@
+# Root gitignore for Aloe Guard Capstone Project
+
+# Dependencies
+node_modules/
+frontend/node_modules/
+.pnp
+.pnp.*
+
+# Next.js build outputs
+.next/
+frontend/.next/
+out/
+build/
+dist/
+
+# Python cache and environments
+__pycache__/
+backend/__pycache__/
+backend/app/**/__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.venv/
+venv/
+env/
+ENV/
+
+# Environment and sensitive credential files
+.env
+.env*.local
+backend/.env
+frontend/.env
+frontend/.env.local
+
+# Logs and Debug
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# OS and IDE files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.tsbuildinfo
+

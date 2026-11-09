@@ -1,0 +1,1 @@
+"""Pydantic schemas package. Flexible models are defined in routers/crud.py for Phase 5."""
